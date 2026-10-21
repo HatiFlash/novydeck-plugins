@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/HatiFlash/novydeck-plugins/schema/registry.schema.json",
+  "title": "NovyDeck Community Plugin Registry",
+  "type": "object",
+  "required": ["schema", "plugins"],
+  "properties": {
+    "schema": {"const": 1},
+    "plugins": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": {"$ref": "#/$defs/plugin"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "plugin": {
+      "type": "object",
+      "required": ["id", "name", "author", "version", "description", "homepage", "download", "sha256", "license", "tested_decks"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.-]*$"},
+        "name": {"type": "string", "minLength": 1},
+        "author": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+){0,7}$", "maxLength": 64},
+        "description": {"type": "string", "minLength": 1},
+        "description_fr": {"type": "string"},
+        "homepage": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "download": {"type": "string", "format": "uri", "pattern": "^https://", "anyOf": [{"pattern": "\\.streamDeckPlugin$"}, {"pattern": "\\.zip$"}]},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "license": {"type": "string", "minLength": 1},
+        "tested_decks": {"type": "array", "items": {"type": "string"}},
+        "min_novydeck": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+){0,7}$", "maxLength": 64}
+      },
+      "additionalProperties": false
+    }
+  }
+}
