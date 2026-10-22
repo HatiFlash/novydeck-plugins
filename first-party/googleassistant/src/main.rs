@@ -223,9 +223,9 @@ impl Plugin for Google {
         match event.name.as_str() {
             "willAppear" => { self.states.insert(ctx.clone(), event.settings().clone()); sdk.title(&ctx, "Google")?; }
             "willDisappear" => { self.states.remove(&ctx); }
-            "didReceiveSettings" => { self.states.insert(ctx, event.settings().clone()); }
+            "didReceiveSettings" => { self.states.insert(ctx.clone(), event.settings().clone()); }
             "propertyInspectorDidAppear" => { self.send_status(&ctx, sdk)?; }
-            "keyDown" if event.action == ACTION => { self.test(ctx, sdk)?; }
+            "keyDown" if event.action == ACTION => { self.test(ctx.clone(), sdk)?; }
             "sendToPlugin" => match event.payload["type"].as_str().unwrap_or("") {
                 "status" => self.send_status(&ctx, sdk)?,
                 "import" => {
@@ -261,7 +261,7 @@ impl Plugin for Google {
                     match fs::remove_file(secret_path()?) { Ok(()) => {}, Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}, Err(_) => return Err("Suppression impossible".into()) }
                     sdk.title(&ctx, "Non connecté")?; self.send_status(&ctx, sdk)?;
                 }
-                "test" => self.test(ctx, sdk)?,
+                "test" => self.test(ctx.clone(), sdk)?,
                 _ => {}
             },
             _ => {}
