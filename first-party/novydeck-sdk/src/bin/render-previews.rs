@@ -2,25 +2,28 @@ use std::{fs, path::PathBuf};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../previews");
     fs::create_dir_all(&root)?;
+    // Les chiffres des aperçus proviennent de la machine de compilation, jamais d'exemples inventés.
+    let cpu = std::env::var("NOVYDECK_PREVIEW_CPU").ok().and_then(|v| v.parse::<u32>().ok()).filter(|v| *v <= 100);
+    let ram = std::env::var("NOVYDECK_PREVIEW_RAM").ok().and_then(|v| v.parse::<u32>().ok()).filter(|v| *v <= 100);
     for (name, lines, gauge) in [
-        ("clock", vec!["12:34:56", "22/10/2026"], None),
-        ("timer", vec!["Timer", "03:25"], Some(0.68)),
-        ("stopwatch", vec!["Stopwatch", "01:42"], None),
-        ("counter", vec!["Count", "42"], None),
-        ("note", vec!["Note", "Hello!"], None),
-        ("clipboard", vec!["Clipboard", "Saved text"], None),
-        ("cpu", vec!["CPU", "—"], None),
-        ("ram", vec!["RAM", "—"], None),
-        ("gpu", vec!["GPU", "—"], None),
-        ("temperature", vec!["CPU n/d", "GPU —"], None),
-        ("play", vec!["Play/Pause", "Example", "Artist"], None),
-        ("next", vec!["Next", "Example"], None),
-        ("previous", vec!["Previous", "Example"], None),
-        ("saver", vec!["OLED OFF"], None),
-        ("toggle", vec!["Maison", "on"], Some(1.0)),
-        ("service", vec!["Service", "light.turn_on"], None),
-        ("state", vec!["État", "19.5 °C"], None),
-        ("googleassistant-command", vec!["Google", "Commande"], None),
-    ] { fs::write(root.join(format!("{name}.png")), novydeck_sdk::render(&lines, gauge)?)?; }
+        ("clock", vec!["12:34:56".into(), "22/10/2026".into()], None),
+        ("timer", vec!["Timer".into(), "03:25".into()], Some(0.68)),
+        ("stopwatch", vec!["Stopwatch".into(), "01:42".into()], None),
+        ("counter", vec!["Count".into(), "42".into()], None),
+        ("note", vec!["Note".into(), "Hello!".into()], None),
+        ("clipboard", vec!["Clipboard".into(), "Saved text".into()], None),
+        ("cpu", vec!["CPU".into(), cpu.map(|v| format!("{v}%")).unwrap_or_else(|| "—".into())], cpu.map(|v| v as f32 / 100.0)),
+        ("ram", vec!["RAM".into(), ram.map(|v| format!("{v}%")).unwrap_or_else(|| "—".into())], ram.map(|v| v as f32 / 100.0)),
+        ("gpu", vec!["GPU".into(), "—".into()], None),
+        ("temperature", vec!["CPU n/d".into(), "GPU —".into()], None),
+        ("play", vec!["Play/Pause".into(), "Example".into(), "Artist".into()], None),
+        ("next", vec!["Next".into(), "Example".into()], None),
+        ("previous", vec!["Previous".into(), "Example".into()], None),
+        ("saver", vec!["OLED OFF".into()], None),
+        ("toggle", vec!["Maison".into(), "on".into()], Some(1.0)),
+        ("service", vec!["Service".into(), "light.turn_on".into()], None),
+        ("state", vec!["État".into(), "19.5 °C".into()], None),
+        ("googleassistant-command", vec!["Google".into(), "Commande".into()], None),
+    ] { fs::write(root.join(format!("{name}.png")), novydeck_sdk::render(&lines.iter().map(String::as_str).collect::<Vec<_>>(), gauge)?)?; }
     Ok(())
 }

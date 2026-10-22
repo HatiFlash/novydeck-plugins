@@ -23,6 +23,16 @@ jobs:
       - run: cargo generate-lockfile
       - run: cargo build --release --locked
       - run: cargo test --locked
+      - name: Sample runner metrics for real system-monitor previews
+        shell: pwsh
+        run: |
+          $cpu = (Get-CimInstance Win32_PerfFormattedData_PerfOS_Processor -Filter "Name='_Total'").PercentProcessorTime
+          $mem = Get-CimInstance Win32_OperatingSystem
+          if ($null -ne $cpu) { "NOVYDECK_PREVIEW_CPU=$([math]::Round($cpu))" >> $env:GITHUB_ENV }
+          if ($mem.TotalVisibleMemorySize -gt 0) {
+            $used = 100 * (1 - $mem.FreePhysicalMemory / $mem.TotalVisibleMemorySize)
+            "NOVYDECK_PREVIEW_RAM=$([math]::Round($used))" >> $env:GITHUB_ENV
+          }
       - run: cargo run --release --locked --bin render-previews
       - run: python tools/make_icons.py
       - run: python tools/package.py
