@@ -202,19 +202,26 @@ def check_archive(plugin, index):
             infos = archive.infolist()
             if any(info.flag_bits & 1 for info in infos):
                 fail(f"plugins[{index}]: archive chiffrée/protégée refusée")
-            sdplugin_dirs = {part for info in infos for part in info.filename.split("/") if part.endswith(".sdPlugin")}
+            # Comme NovyDeck, accepter les anciennes archives Windows dont les chemins utilisent « \\ ».
+            by_name = {info.filename.replace("\\", "/"): info for info in infos}
+            sdplugin_dirs = set()
+            for name in by_name:
+                parts = name.split("/")
+                for i, part in enumerate(parts):
+                    if part.endswith(".sdPlugin"):
+                        sdplugin_dirs.add("/".join(parts[: i + 1]))
+                        break
             if not sdplugin_dirs:
                 fail(f"plugins[{index}]: aucun dossier .sdPlugin dans l'archive")
             for directory in sdplugin_dirs:
                 manifest_name = directory.rstrip("/") + "/manifest.json"
-                try:
-                    manifest_info = archive.getinfo(manifest_name)
-                except KeyError:
+                manifest_info = by_name.get(manifest_name)
+                if manifest_info is None:
                     fail(f"plugins[{index}]: {directory} ne contient pas manifest.json")
                 if manifest_info.flag_bits & 1:
                     fail(f"plugins[{index}]: manifest chiffré/protégé refusé")
                 try:
-                    json.loads(archive.read(manifest_name))
+                    json.loads(archive.read(manifest_info))
                 except (UnicodeDecodeError, json.JSONDecodeError, RuntimeError) as exc:
                     fail(f"plugins[{index}]: manifest.json illisible: {exc}")
     except zipfile.BadZipFile as exc:
