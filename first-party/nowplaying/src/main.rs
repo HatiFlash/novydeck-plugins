@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io::Cursor, time::{Duration,Instant}};
 use novydeck_sdk::{Client,Event,Plugin};
-use windows::{Media::Control::{GlobalSystemMediaTransportControlsSessionManager as Manager, GlobalSystemMediaTransportControlsSession}, Storage::Streams::{DataReader,IInputStream}};
-use image::{DynamicImage,ImageFormat};
+use windows::{core::Interface, Media::Control::{GlobalSystemMediaTransportControlsSessionManager as Manager, GlobalSystemMediaTransportControlsSession}, Storage::Streams::{DataReader,IInputStream}};
+use image::ImageFormat;
 
 const PLAY:&str="com.novydeck.nowplaying.play";
 const NEXT:&str="com.novydeck.nowplaying.next";
