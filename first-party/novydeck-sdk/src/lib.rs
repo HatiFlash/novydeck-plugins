@@ -110,8 +110,11 @@ pub fn render(lines: &[&str], progress: Option<f32>) -> Result<Vec<u8>, String> 
                     let xx = px as i32 + bounds.min.x as i32;
                     let yy = py as i32 + bounds.min.y as i32;
                     if xx >= 0 && yy >= 0 && xx < SIZE as i32 && yy < SIZE as i32 {
-                        let color = (coverage * 255.0) as u8;
-                        img.put_pixel(xx as u32, yy as u32, Rgba([color, color, color, 255]));
+                        // Mélange avec le fond : aucun rectangle noir autour des lettres.
+                        let c = coverage.clamp(0.0, 1.0);
+                        let under = *img.get_pixel(xx as u32, yy as u32);
+                        let mix = |v: u8| (v as f32 * (1.0 - c) + 255.0 * c).round() as u8;
+                        img.put_pixel(xx as u32, yy as u32, Rgba([mix(under[0]), mix(under[1]), mix(under[2]), 255]));
                     }
                 });
             }

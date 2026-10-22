@@ -1,5 +1,5 @@
 {
-  "Name":"NovyDeck OLED Saver", "Description":"Black fullscreen window / Fenêtre noire plein écran", "Author":"NovyDeck", "Version":"1.0.0", "SDKVersion":2,
+  "Name":"NovyDeck OLED Saver", "Description":"Black fullscreen window / Fenêtre noire plein écran", "Author":"NovyDeck", "Version":"1.0.1", "SDKVersion":2,
   "CodePathWin":"bin/novydeck-oledsaver.exe", "Icon":"images/plugin-icon", "URL":"https://github.com/HatiFlash/novydeck-plugins",
   "OS":[{"Platform":"windows","MinimumVersion":"10"}], "Software":{"MinimumVersion":"6.0"},
   "Actions":[
