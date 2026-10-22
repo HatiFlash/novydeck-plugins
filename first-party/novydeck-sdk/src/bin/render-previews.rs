@@ -17,6 +17,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("next", vec!["Next", "Example"], None),
         ("previous", vec!["Previous", "Example"], None),
         ("saver", vec!["OLED OFF"], None),
+        ("toggle", vec!["Maison", "on"], Some(1.0)),
+        ("service", vec!["Service", "light.turn_on"], None),
+        ("state", vec!["État", "19.5 °C"], None),
     ] { fs::write(root.join(format!("{name}.png")), novydeck_sdk::render(&lines, gauge)?)?; }
     Ok(())
 }

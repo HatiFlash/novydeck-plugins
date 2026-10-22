@@ -1,0 +1,54 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><title>Home Assistant</title>
+<style>body{background:#252831;color:white;font:14px sans-serif;padding:12px}label{display:block;margin:10px 0}input,select,textarea{box-sizing:border-box;width:100%;padding:5px}button{margin:5px 4px 5px 0}small{color:#ddd}#notice{min-height:24px;color:#9fe5da}</style>
+<label>Adresse Home Assistant <input id="url" placeholder="http://homeassistant.local:8123"></label>
+<label>Jeton d'accès longue durée (enregistré chiffré sous votre compte Windows, jamais dans le profil)<input id="token" type="password" autocomplete="off"></label>
+<button id="save" type="button">Enregistrer le jeton</button><span id="status">Non configuré</span><br>
+<button id="test" type="button">Tester la connexion</button>
+<label><input id="insecure" type="checkbox" style="width:auto"> Accepter les certificats auto-signés (dangereux : désactive la vérification TLS)</label>
+<label>Filtre domaine <select id="filter"><option value="">Tous</option><option>light</option><option>switch</option><option>fan</option><option>input_boolean</option><option>cover</option><option>sensor</option><option>scene</option><option>script</option><option>media_player</option></select></label>
+<button id="list" type="button">Charger les entités</button>
+<label>Rechercher <input id="search" placeholder="Nom ou ID"></label>
+<label>Entité <select id="entities"><option value="">Sélectionner</option></select></label>
+<label>ID de l'entité (saisie manuelle possible) <input id="entity" placeholder="light.salon"></label>
+<label>Domaine du service <input id="domain" placeholder="light"></label>
+<label>Service <input id="service" placeholder="turn_on"></label>
+<label>Données JSON du service (objet) <textarea id="data" rows="4" placeholder='{"brightness": 128}'></textarea></label>
+<label>Actualisation (secondes, 2–300) <input id="refresh" type="number" min="2" max="300" value="10"></label>
+<small>Les champs service concernent l'action « Appeler un service ». Le jeton n'est jamais renvoyé à l'inspecteur. Le bouton Tester vérifie GET /api/.</small>
+<div id="notice" role="status"></div>
+<script>
+let ws, context, settings={}, items=[];
+const $=id=>document.getElementById(id);
+const fields=['url','entity','domain','service','data','refresh','insecure'];
+function fill(){for(const key of fields)if(settings[key]!==undefined)$(key)[key==='insecure'?'checked':'value']=settings[key];}
+function send(event,payload){if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({event,context,payload}));}
+function save(){const s={};for(const key of fields)s[key]=key==='insecure'?$(key).checked:key==='refresh'?Number($(key).value)||10:$(key).value;settings=s;send('setSettings',s);}
+function display(){const query=$('search').value.toLowerCase(), domain=$('filter').value;
+  const select=$('entities');select.replaceChildren();const first=document.createElement('option');first.value='';first.textContent='Sélectionner';select.append(first);
+  for(const item of items){if(domain&&!item.id.startsWith(domain+'.'))continue;if(query&&!(item.id+' '+item.name).toLowerCase().includes(query))continue;
+    const opt=document.createElement('option');opt.value=item.id;opt.textContent=item.name+' ('+item.id+')';select.append(opt);}
+  select.value=$('entity').value;
+}
+function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){
+  try{const a=JSON.parse(actionInfo);context=a.context;settings=a.payload?.settings||{};}catch(_){$('notice').textContent='Configuration indisponible';return;}
+  fill();ws=new WebSocket('ws://127.0.0.1:'+port);
+  ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));send('getSettings');send('sendToPlugin',{op:'status'});};
+  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch(_){return;}
+    if(m.context!==context)return;
+    if(m.event==='didReceiveSettings'){settings=m.payload?.settings||{};fill();}
+    if(m.event==='sendToPropertyInspector'){
+      const p=m.payload||{};
+      if(p.type==='status'){$('status').textContent=p.connected?'Connecté':'Non configuré';$('notice').textContent=p.connected?'Jeton enregistré':'Jeton absent ou non lisible';}
+      if(p.type==='test')$('notice').textContent='Connexion réussie';
+      if(p.type==='error')$('notice').textContent=p.message||'Erreur';
+      if(p.type==='entities'){items=Array.isArray(p.items)?p.items:[];display();$('notice').textContent=items.length+' entités chargées';}
+    }
+  };
+}
+for(const key of fields)$(key).addEventListener('change',save);
+$('save').onclick=()=>{const token=$('token').value.trim();$('token').value='';if(token){send('sendToPlugin',{op:'saveToken',token});$('notice').textContent='Enregistrement demandé';}};
+$('test').onclick=()=>{save();send('sendToPlugin',{op:'test',settings});};
+$('list').onclick=()=>{save();send('sendToPlugin',{op:'list',settings});};
+$('filter').onchange=display;$('search').oninput=display;
+$('entities').onchange=()=>{if($('entities').value){$('entity').value=$('entities').value;save();}};
+</script></html>

@@ -1,0 +1,17 @@
+{
+  "Name": "NovyDeck Home Assistant",
+  "Description": "Home Assistant entity control and state / Commande et état Home Assistant",
+  "Author": "NovyDeck",
+  "Version": "1.0.0",
+  "SDKVersion": 2,
+  "CodePathWin": "bin/novydeck-homeassistant.exe",
+  "Icon": "images/plugin-icon",
+  "URL": "https://github.com/HatiFlash/novydeck-plugins",
+  "OS": [{"Platform":"windows", "MinimumVersion":"10"}],
+  "Software": {"MinimumVersion":"6.0"},
+  "Actions": [
+    {"UUID":"com.novydeck.homeassistant.toggle", "Name":"Toggle entity", "Tooltip":"Toggle entity / Basculer une entité", "Icon":"images/toggle-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/toggle"}]},
+    {"UUID":"com.novydeck.homeassistant.service", "Name":"Call service", "Tooltip":"Call service / Appeler un service", "Icon":"images/service-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/service"}]},
+    {"UUID":"com.novydeck.homeassistant.state", "Name":"Display state", "Tooltip":"Display state / Afficher un état", "Icon":"images/state-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/state"}]}
+  ]
+}
