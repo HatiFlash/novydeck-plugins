@@ -20,6 +20,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("toggle", vec!["Maison", "on"], Some(1.0)),
         ("service", vec!["Service", "light.turn_on"], None),
         ("state", vec!["État", "19.5 °C"], None),
+        ("googleassistant-command", vec!["Google", "Commande"], None),
     ] { fs::write(root.join(format!("{name}.png")), novydeck_sdk::render(&lines, gauge)?)?; }
     Ok(())
 }

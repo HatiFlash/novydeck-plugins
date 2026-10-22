@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["novydeck-sdk", "clock", "counter", "sysmonitor", "nowplaying", "oledsaver", "homeassistant"]
+members = ["novydeck-sdk", "clock", "counter", "sysmonitor", "nowplaying", "oledsaver", "homeassistant", "googleassistant"]
 
 [workspace.package]
 edition = "2021"
