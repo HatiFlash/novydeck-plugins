@@ -56,6 +56,9 @@ impl Client {
     pub fn settings(&mut self, context: &str, settings: Value) -> Result<(), String> {
         self.send(json!({"event":"setSettings", "context":context, "payload":settings}))
     }
+    pub fn inspector(&mut self, context: &str, payload: Value) -> Result<(), String> {
+        self.send(json!({"event":"sendToPropertyInspector", "context":context, "payload":payload}))
+    }
     pub fn ok(&mut self, context: &str) -> Result<(), String> { self.send(json!({"event":"showOk", "context":context})) }
     pub fn alert(&mut self, context: &str) -> Result<(), String> { self.send(json!({"event":"showAlert", "context":context})) }
     pub fn log(&mut self, message: &str) -> Result<(), String> {

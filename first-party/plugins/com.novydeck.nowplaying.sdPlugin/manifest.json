@@ -1,0 +1,10 @@
+{
+  "Name":"NovyDeck Now Playing", "Description":"Media controls and artwork / Lecteur et pochette", "Author":"NovyDeck", "Version":"1.0.0", "SDKVersion":2,
+  "CodePathWin":"bin/novydeck-nowplaying.exe", "Icon":"images/plugin-icon", "URL":"https://github.com/HatiFlash/novydeck-plugins",
+  "OS":[{"Platform":"windows","MinimumVersion":"10"}], "Software":{"MinimumVersion":"6.0"},
+  "Actions":[
+    {"UUID":"com.novydeck.nowplaying.play","Name":"Play / Pause","Tooltip":"Play or pause / Lecture ou pause","Icon":"images/play-icon","Controllers":["Keypad"],"States":[{"Image":"images/play"}]},
+    {"UUID":"com.novydeck.nowplaying.next","Name":"Next","Tooltip":"Next track / Piste suivante","Icon":"images/next-icon","Controllers":["Keypad"],"States":[{"Image":"images/next"}]},
+    {"UUID":"com.novydeck.nowplaying.previous","Name":"Previous","Tooltip":"Previous track / Piste précédente","Icon":"images/previous-icon","Controllers":["Keypad"],"States":[{"Image":"images/previous"}]}
+  ]
+}

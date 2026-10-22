@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>OLED Saver</title>
+<style>body{background:#252831;color:white;font:14px sans-serif;padding:12px}label{display:block;margin:12px 0}</style>
+<label>Monitor / Écran <select id="monitor"><option value="0">Primary / Principal</option></select></label>
+<label>Close on mouse movement / Fermer au mouvement <input id="closeOnMove" type="checkbox"></label>
+<p>Closes on keyboard, click or another key press. No Windows power settings are changed.<br>Se ferme au clavier, clic ou nouvel appui. Aucun réglage Windows modifié.</p>
+<script>
+let ws,context,settings={};
+function fill(){document.getElementById('monitor').value=String(settings.monitor??0);document.getElementById('closeOnMove').checked=settings.closeOnMove===true;}
+function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){
+  try{const action=JSON.parse(actionInfo);context=action.context;settings=action.payload?.settings||{};}catch(e){console.error(e);}
+  fill();ws=new WebSocket('ws://127.0.0.1:'+port);
+  ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));ws.send(JSON.stringify({event:'getSettings',context}));};
+  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
+    if(m.context!==context)return;
+    if(m.event==='didReceiveSettings'){settings=m.payload?.settings||{};fill();}
+    if(m.event==='sendToPropertyInspector' && Array.isArray(m.payload?.monitors)){
+      const select=document.getElementById('monitor');select.replaceChildren();
+      for(const item of m.payload.monitors){const option=document.createElement('option');option.value=String(item.index);option.textContent=`${item.name} (${item.width} × ${item.height})`;select.append(option);}
+      fill();
+    }
+  };
+}
+for(const id of ['monitor','closeOnMove'])document.getElementById(id).addEventListener('change',()=>{
+  settings={...settings,monitor:Number(document.getElementById('monitor').value),closeOnMove:document.getElementById('closeOnMove').checked};
+  if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({event:'setSettings',context,payload:settings}));
+});
+</script></html>

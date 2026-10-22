@@ -1,0 +1,11 @@
+{
+  "Name":"NovyDeck System Monitor", "Description":"CPU, RAM, GPU and temperature / Moniteur système", "Author":"NovyDeck", "Version":"1.0.0", "SDKVersion":2,
+  "CodePathWin":"bin/novydeck-sysmonitor.exe", "Icon":"images/plugin-icon", "URL":"https://github.com/HatiFlash/novydeck-plugins",
+  "OS":[{"Platform":"windows","MinimumVersion":"10"}], "Software":{"MinimumVersion":"6.0"},
+  "Actions":[
+    {"UUID":"com.novydeck.sysmonitor.cpu","Name":"CPU","Tooltip":"CPU load / Charge CPU","Icon":"images/cpu-icon","Controllers":["Keypad"],"States":[{"Image":"images/cpu"}]},
+    {"UUID":"com.novydeck.sysmonitor.ram","Name":"RAM","Tooltip":"Memory / Mémoire","Icon":"images/ram-icon","Controllers":["Keypad"],"States":[{"Image":"images/ram"}]},
+    {"UUID":"com.novydeck.sysmonitor.gpu","Name":"GPU","Tooltip":"GPU engine load / Charge GPU","Icon":"images/gpu-icon","Controllers":["Keypad"],"States":[{"Image":"images/gpu"}]},
+    {"UUID":"com.novydeck.sysmonitor.temperature","Name":"Temperature","Tooltip":"CPU n/d, NVIDIA GPU temperature / Température","Icon":"images/temperature-icon","Controllers":["Keypad"],"States":[{"Image":"images/temperature"}]}
+  ]
+}

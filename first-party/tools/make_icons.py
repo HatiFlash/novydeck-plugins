@@ -6,7 +6,10 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 FONT = ROOT / "novydeck-sdk/assets/DejaVuSans.ttf"
 LABELS = {"clock": {"plugin": "ND", "clock": "24", "timer": "T", "stopwatch": "S"},
-          "counter": {"plugin": "ND", "counter": "+1", "note": "N", "clipboard": "C"}}
+          "counter": {"plugin": "ND", "counter": "+1", "note": "N", "clipboard": "C"},
+          "sysmonitor": {"plugin": "ND", "cpu": "CPU", "ram": "RAM", "gpu": "GPU", "temperature": "°C"},
+          "nowplaying": {"plugin": "ND", "play": "▶", "next": ">|", "previous": "|<"},
+          "oledsaver": {"plugin": "ND", "saver": "OLED"}}
 for plugin, actions in LABELS.items():
     out = ROOT / "plugins" / f"com.novydeck.{plugin}.sdPlugin" / "images"
     out.mkdir(parents=True, exist_ok=True)

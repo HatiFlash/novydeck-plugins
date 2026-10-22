@@ -1,0 +1,8 @@
+{
+  "Name":"NovyDeck OLED Saver", "Description":"Black fullscreen window / Fenêtre noire plein écran", "Author":"NovyDeck", "Version":"1.0.0", "SDKVersion":2,
+  "CodePathWin":"bin/novydeck-oledsaver.exe", "Icon":"images/plugin-icon", "URL":"https://github.com/HatiFlash/novydeck-plugins",
+  "OS":[{"Platform":"windows","MinimumVersion":"10"}], "Software":{"MinimumVersion":"6.0"},
+  "Actions":[
+    {"UUID":"com.novydeck.oledsaver.saver","Name":"OLED Saver","Tooltip":"Cover a monitor / Masquer un écran","Icon":"images/saver-icon","PropertyInspectorPath":"inspector.html","Controllers":["Keypad"],"States":[{"Image":"images/saver"}]}
+  ]
+}
