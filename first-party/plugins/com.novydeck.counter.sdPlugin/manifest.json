@@ -1,0 +1,17 @@
+{
+  "Name": "NovyDeck Counter",
+  "Description": "Counter, quick note and clipboard / Compteur, note rapide et presse-papiers",
+  "Author": "NovyDeck",
+  "Version": "1.0.0",
+  "SDKVersion": 2,
+  "CodePathWin": "bin/novydeck-counter.exe",
+  "Icon": "images/plugin-icon",
+  "URL": "https://github.com/HatiFlash/novydeck-plugins",
+  "OS": [{"Platform": "windows", "MinimumVersion": "10"}],
+  "Software": {"MinimumVersion": "6.0"},
+  "Actions": [
+    {"UUID":"com.novydeck.counter.counter", "Name":"Counter", "Tooltip":"Counter / Compteur", "Icon":"images/counter-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/counter"}]},
+    {"UUID":"com.novydeck.counter.note", "Name":"Quick Note", "Tooltip":"Quick Note / Note rapide", "Icon":"images/note-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/note"}]},
+    {"UUID":"com.novydeck.counter.clipboard", "Name":"Clipboard", "Tooltip":"Clipboard / Presse-papiers", "Icon":"images/clipboard-icon", "Controllers":["Keypad"], "States":[{"Image":"images/clipboard"}]}
+  ]
+}

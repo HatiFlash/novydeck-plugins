@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["novydeck-sdk", "clock", "counter"]
+
+[workspace.package]
+edition = "2021"
+version = "1.0.0"
+license = "MIT"
+
+[workspace.dependencies]
+novydeck-sdk = { path = "novydeck-sdk" }
+serde_json = "1.0"

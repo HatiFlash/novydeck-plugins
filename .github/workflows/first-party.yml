@@ -1,0 +1,51 @@
+name: First-party Windows plugins
+on:
+  push:
+    branches: [feat/first-party-plugins]
+    tags: ['first-party-v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: first-party
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pillow
+      - run: cargo generate-lockfile
+      - run: cargo build --release --locked
+      - run: cargo test --locked
+      - run: cargo run --release --locked --bin render-previews
+      - run: python tools/make_icons.py
+      - run: python tools/package.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: first-party-windows
+          path: |
+            first-party/dist/*.streamDeckPlugin
+            first-party/dist/SHA256SUMS.txt
+            first-party/previews/*.png
+  release:
+    if: startsWith(github.ref, 'refs/tags/first-party-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: first-party-windows
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*.streamDeckPlugin
+            artifacts/SHA256SUMS.txt

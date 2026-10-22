@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Counter settings</title>
+<style>body{background:#252831;color:white;font:14px sans-serif;padding:12px}label{display:block;margin:12px 0}input,textarea{max-width:230px}</style>
+<label>Step / Pas <input id="step" type="number" value="1"></label>
+<label>Value / Valeur <input id="value" type="number" value="0"></label>
+<label>Reset value / Remise à zéro <input id="reset" type="number" value="0"></label>
+<label>Quick note / Note rapide <textarea id="text" maxlength="2048"></textarea></label>
+<script>
+let ws,context,settings={};
+function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){
+  try{const a=JSON.parse(actionInfo);context=a.context;settings=a.payload?.settings||{};}catch(e){console.error(e);}
+  function fill(){for(const key of ['step','value','reset','text'])if(settings[key]!==undefined)document.getElementById(key).value=settings[key];}
+  fill();ws=new WebSocket('ws://127.0.0.1:'+port);
+  ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));ws.send(JSON.stringify({event:'getSettings',context}));};
+  ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.event==='didReceiveSettings'&&m.context===context){settings=m.payload?.settings||{};fill();}};
+}
+for(const key of ['step','value','reset','text'])document.getElementById(key).addEventListener('change',()=>{
+  settings={...settings};for(const k of ['step','value','reset'])settings[k]=Number(document.getElementById(k).value)||0;
+  settings.text=document.getElementById('text').value;
+  if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({event:'setSettings',context,payload:settings}));
+});
+</script></html>
