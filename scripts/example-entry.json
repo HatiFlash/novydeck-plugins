@@ -1,0 +1,23 @@
+{
+  "id": "com.example.clock",
+  "name": "Example Clock",
+  "author": "Example Author",
+  "version": "1.0.0",
+  "description": "A sample clock plugin.",
+  "description_fr": "Exemple de plugin d'horloge.",
+  "homepage": "https://github.com/example/clock",
+  "download": "https://github.com/example/clock/releases/download/v1.0.0/com.example.clock.streamDeckPlugin",
+  "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "license": "MIT",
+  "min_novydeck": "0.9.0",
+  "tested_decks": [],
+  "uuid": "com.example.clock",
+  "category": "productivity",
+  "summary": "A sample clock",
+  "summary_fr": "Exemple d'horloge",
+  "icon": "https://raw.githubusercontent.com/example/clock/main/images/icon.png",
+  "screenshots": ["https://raw.githubusercontent.com/example/clock/main/images/preview.png"],
+  "actions": [{"name": "Clock", "name_fr": "Horloge"}],
+  "tags": ["clock"],
+  "requires": "Windows 10+"
+}

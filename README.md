@@ -2,11 +2,17 @@
 
 [English](README.md) | [Français](README.fr.md)
 
-A community-maintained directory of third-party plugins for [NovyDeck](https://github.com/HatiFlash/NovyDeck). The registry is currently empty; see [CONTRIBUTING.md](CONTRIBUTING.md) to propose a plugin.
+A directory of open-source plugins for [NovyDeck](https://github.com/HatiFlash/NovyDeck). See [CONTRIBUTING.md](CONTRIBUTING.md) to propose a plugin.
 
-## Plugins
+## Official NovyDeck plugins
 
-No community plugins yet.
+Source code and packaging: [first-party/](first-party/). The seven native plugins are Clock, Counter, System Monitor, Now Playing, OLED Saver, Home Assistant and Google Assistant Command. Home Assistant needs your own server and token; Google Assistant needs your own Google Cloud project and desktop OAuth credentials. Neither integration has been tested against a real account/server.
+
+## Community plugins
+
+The registry is being prepared; only entries with verified release archives and checksums will be published.
+
+An entry includes an HTTPS homepage and official release archive, SHA-256, free/open-source license, exact version, tested decks (empty if untested), and required `min_novydeck`. Optional metadata: `description_fr`, `uuid`, `category` (`system`, `audio`, `streaming`, `productivity`, `smart-home`, `communication`, `gaming`, `utilities`), `summary`/`summary_fr` (at most 140 characters), HTTPS PNG square `icon` (at most 256 KiB), up to six HTTPS PNG/JPEG `screenshots` (each at most 2 MiB and 4096 px per side), up to 100 `actions` (`name` and optional `name_fr`, up to 120 UTF-8 bytes), up to eight `tags` (at most 40 characters), and `requires` (one string, at most 200 characters). See [example entry](scripts/example-entry.json).
 
 ## Use the community library in NovyDeck
 
