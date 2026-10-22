@@ -1,6 +1,7 @@
 use std::{collections::HashMap, mem::{size_of, zeroed}, ptr::{null, null_mut}, time::{Duration, Instant}};
 use novydeck_sdk::{Client, Event, Plugin};
 use windows_sys::Win32::{Foundation::FILETIME, System::{Threading::GetSystemTimes, SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX}, Performance::*}};
+use windows::Win32::Graphics::Dxgi::{CreateDXGIFactory1, IDXGIFactory1};
 
 const CPU: &str = "com.novydeck.sysmonitor.cpu";
 const RAM: &str = "com.novydeck.sysmonitor.ram";
@@ -24,9 +25,37 @@ fn memory() -> Option<(f64,f64)> {
         } }
 }
 fn wide(s:&str)->Vec<u16> { s.encode_utf16().chain(Some(0)).collect() }
-struct GpuCounters { query: isize, counters: Vec<isize> }
+// DXGI enumerates the adapter driving the primary desktop output first.
+fn primary_luid() -> Option<(u32,u32)> {
+    unsafe {
+        let factory: IDXGIFactory1 = CreateDXGIFactory1().ok()?;
+        let desc = factory.EnumAdapters1(0).ok()?.GetDesc1().ok()?;
+        Some((desc.AdapterLuid.HighPart as u32, desc.AdapterLuid.LowPart))
+    }
+}
+fn engine_key(path:&str)->Option<((u32,u32),String)> {
+    let path=path.to_ascii_lowercase();
+    let instance=path.split('(').nth(1)?.split(')').next()?;
+    let luid=instance.split("luid_0x").nth(1)?;
+    let (high,rest)=luid.split_once("_0x")?;
+    let low=rest.split('_').next()?;
+    let engine=instance.split("_engtype_").nth(1)?.split('_').next()?;
+    if engine.is_empty(){return None}
+    Some(((u32::from_str_radix(high,16).ok()?,u32::from_str_radix(low,16).ok()?),engine.into()))
+}
+fn engine_usage<'a>(samples:impl IntoIterator<Item=(&'a ((u32,u32),String),f64)>, primary:(u32,u32))->Option<f64>{
+    let mut by_engine: HashMap<&str,f64>=HashMap::new();
+    for (key,value) in samples {
+        if key.0==primary && value.is_finite() && value>=0.0 {
+            *by_engine.entry(&key.1).or_default()+=value;
+        }
+    }
+    by_engine.values().copied().reduce(f64::max).map(|v|v.clamp(0.0,100.0))
+}
+struct GpuCounters { query: isize, counters: Vec<(isize,((u32,u32),String))>, primary:(u32,u32) }
 impl GpuCounters {
     fn open() -> Option<Self> {
+        let primary=primary_luid()?;
         unsafe {
             let path=wide("\\GPU Engine(*)\\Utilization Percentage"); let mut len=0;
             let status=PdhExpandWildCardPathW(null(),path.as_ptr(),null_mut(),&mut len,0);
@@ -37,28 +66,29 @@ impl GpuCounters {
             if PdhOpenQueryW(null(),0,&mut query)!=0 {return None}
             let mut counters=Vec::new();
             for part in paths.split(|c| *c==0).filter(|p| !p.is_empty()) {
-                let mut p=part.to_vec();p.push(0);let mut counter=0;
-                if PdhAddEnglishCounterW(query,p.as_ptr(),0,&mut counter)==0 { counters.push(counter); }
+                let text=String::from_utf16_lossy(part);
+                if let Some(key)=engine_key(&text) {
+                    if key.0!=primary {continue}
+                    let mut p=part.to_vec();p.push(0);let mut counter=0;
+                    if PdhAddEnglishCounterW(query,p.as_ptr(),0,&mut counter)==0 { counters.push((counter,key)); }
+                }
             }
             if counters.is_empty() {PdhCloseQuery(query);return None}
             PdhCollectQueryData(query);
-            Some(Self {query,counters})
+            Some(Self {query,counters,primary})
         }
     }
     fn sample(&self)->Option<f64> {
         unsafe {if PdhCollectQueryData(self.query)!=0{return None}
-            let mut by_engine: HashMap<String,f64>=HashMap::new();
-            // Each PDH instance represents one process on one engine; sum process loads per engine,
-            // then take the busiest engine rather than summing unrelated engine percentages.
-            for (i,c) in self.counters.iter().enumerate() {
+            let mut samples=Vec::new();
+            for (counter,key) in &self.counters {
                 let mut value: PDH_FMT_COUNTERVALUE=zeroed();
-                if PdhGetFormattedCounterValue(*c,PDH_FMT_DOUBLE,null_mut(),&mut value)==0 &&
+                if PdhGetFormattedCounterValue(*counter,PDH_FMT_DOUBLE,null_mut(),&mut value)==0 &&
                    (value.CStatus==PDH_CSTATUS_VALID_DATA || value.CStatus==PDH_CSTATUS_NEW_DATA) {
-                    let v=value.Anonymous.doubleValue;
-                    if v.is_finite() && v>=0.0 { *by_engine.entry(format!("{i}")).or_default()+=v; }
+                    samples.push((key,value.Anonymous.doubleValue));
                 }
             }
-            (!by_engine.is_empty()).then(|| by_engine.values().copied().fold(0.0,f64::max).min(100.0))
+            engine_usage(samples,self.primary)
         }
     }
 }
@@ -101,4 +131,15 @@ fn main(){if let Err(e)=novydeck_sdk::run(Monitor::default()){eprintln!("sysmoni
 #[cfg(test)] mod tests {use super::*;
  #[test]fn formatting(){assert_eq!(percent(None),"—");assert_eq!(percent(Some(105.0)),"100%");assert_eq!(cpu_temp(),"n/d");assert_eq!(cpu_load((2,10),(3,20)),Some(90.0));}
  #[test]fn png(){let p=novydeck_sdk::render(&["GPU","—"],None).unwrap();assert!(p.len()>100);}
+ #[test]fn gpu_engines(){
+     let parse=|s|engine_key(s).unwrap();
+     let a=parse("\\GPU Engine(pid_1_luid_0x00000000_0x00000001_phys_0_eng_0_engtype_3D)\\Utilization Percentage");
+     let b=parse("\\GPU Engine(pid_2_luid_0x00000000_0x00000001_phys_0_eng_0_engtype_3D)\\Utilization Percentage");
+     let copy=parse("\\GPU Engine(pid_1_luid_0x00000000_0x00000001_phys_0_eng_1_engtype_Copy)\\Utilization Percentage");
+     let other=parse("\\GPU Engine(pid_1_luid_0x00000000_0x00000002_phys_0_eng_0_engtype_3D)\\Utilization Percentage");
+     assert_eq!(engine_usage([(&a,35.0),(&b,40.0),(&copy,20.0),(&other,90.0)],(0,1)),Some(75.0));
+     assert_eq!(engine_usage([(&a,80.0),(&b,80.0)],(0,1)),Some(100.0));
+     assert_eq!(engine_usage([(&other,90.0)],(0,1)),None);
+     assert_eq!(engine_usage([(&a,f64::NAN)],(0,1)),None);
+ }
 }

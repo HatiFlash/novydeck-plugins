@@ -1,10 +1,10 @@
 use std::{collections::HashMap,mem::{size_of,zeroed},ptr::{null,null_mut},sync::mpsc,thread};
 use novydeck_sdk::{Client,Event,Plugin};
 use serde_json::{json,Value};
-use windows_sys::Win32::{Foundation::{HWND,LPARAM,RECT},Graphics::Gdi::{EnumDisplayMonitors,GetMonitorInfoW,GetStockObject,BLACK_BRUSH,MONITORINFOEXW},UI::WindowsAndMessaging::*};
+use windows_sys::Win32::{Foundation::{HWND,LPARAM,RECT},Graphics::Gdi::{EnumDisplayMonitors,GetMonitorInfoW,GetStockObject,BLACK_BRUSH,MONITORINFOEXW,HDC,HMONITOR},UI::WindowsAndMessaging::*};
 
 #[derive(Clone)]struct Screen {name:String,rect:RECT}
-unsafe extern "system" fn enumerate(m:isize,_dc:isize,_rect:*mut RECT,data:LPARAM)->i32 {
+unsafe extern "system" fn enumerate(m:HMONITOR,_dc:HDC,_rect:*mut RECT,data:LPARAM)->i32 {
     let screens=&mut *(data as *mut Vec<Screen>);
     let mut info:MONITORINFOEXW=zeroed();info.monitorInfo.cbSize=size_of::<MONITORINFOEXW>() as u32;
     if GetMonitorInfoW(m,&mut info.monitorInfo)!=0 {
@@ -13,7 +13,7 @@ unsafe extern "system" fn enumerate(m:isize,_dc:isize,_rect:*mut RECT,data:LPARA
     }
     1
 }
-fn monitors()->Vec<Screen>{let mut screens=Vec::new();unsafe{EnumDisplayMonitors(0,null(),Some(enumerate),&mut screens as *mut _ as isize);}screens}
+fn monitors()->Vec<Screen>{let mut screens=Vec::new();unsafe{EnumDisplayMonitors(null_mut(),null(),Some(enumerate),&mut screens as *mut _ as isize);}screens}
 fn selected(settings:&Value,count:usize)->Option<usize>{
     let index=settings["monitor"].as_u64().unwrap_or(0);
     usize::try_from(index).ok().filter(|i|*i<count)
@@ -32,24 +32,24 @@ unsafe extern "system" fn window_proc(hwnd:HWND,msg:u32,w:usize,l:isize)->isize{
 fn window(screen:Screen,close_on_move:bool,tx:mpsc::Sender<isize>){
     unsafe{
         let class:Vec<u16>="NovyDeckOledSaver\0".encode_utf16().collect();
-        let cls=WNDCLASSW{lpfnWndProc:Some(window_proc),lpszClassName:class.as_ptr(),hbrBackground:GetStockObject(BLACK_BRUSH) as isize,..zeroed()};
+        let cls=WNDCLASSW{lpfnWndProc:Some(window_proc),lpszClassName:class.as_ptr(),hbrBackground:GetStockObject(BLACK_BRUSH),..zeroed()};
         RegisterClassW(&cls);
         let r=screen.rect;
         let hwnd=CreateWindowExW(WS_EX_TOPMOST|WS_EX_TOOLWINDOW,class.as_ptr(),class.as_ptr(),WS_POPUP|WS_VISIBLE,
-            r.left,r.top,r.right-r.left,r.bottom-r.top,0,0,0,null());
-        if hwnd==0{let _=tx.send(0);return}
+            r.left,r.top,r.right-r.left,r.bottom-r.top,null_mut(),null_mut(),null_mut(),null());
+        if hwnd.is_null(){let _=tx.send(0);return}
         if close_on_move{SetWindowLongPtrW(hwnd,GWLP_USERDATA,1);}
         SetWindowPos(hwnd,HWND_TOPMOST,r.left,r.top,r.right-r.left,r.bottom-r.top,SWP_SHOWWINDOW);
-        ShowCursor(0);SetForegroundWindow(hwnd);SetFocus(hwnd);
-        let _=tx.send(hwnd);
+        ShowCursor(0);SetForegroundWindow(hwnd);
+        let _=tx.send(hwnd as isize);
         let mut message:MSG=zeroed();
-        while GetMessageW(&mut message,0,0,0)>0 {TranslateMessage(&message);DispatchMessageW(&message);}
+        while GetMessageW(&mut message,null_mut(),0,0)>0 {TranslateMessage(&message);DispatchMessageW(&message);}
     }
 }
 struct Active{hwnd:isize,join:thread::JoinHandle<()>}
 #[derive(Default)]struct Saver{contexts:HashMap<String,Value>,active:HashMap<String,Active>}
 impl Saver{
-    fn close(&mut self,ctx:&str){if let Some(active)=self.active.remove(ctx){unsafe{PostMessageW(active.hwnd,WM_CLOSE,0,0);}let _=active.join.join();}}
+    fn close(&mut self,ctx:&str){if let Some(active)=self.active.remove(ctx){unsafe{PostMessageW(active.hwnd as HWND,WM_CLOSE,0,0);}let _=active.join.join();}}
     fn display(&self,ctx:&str,sdk:&mut Client)->Result<(),String>{
         let label=if self.active.contains_key(ctx){"OLED ON"}else{"OLED OFF"};
         sdk.image(ctx,&novydeck_sdk::render(&[label],None)?)
@@ -62,7 +62,7 @@ impl Saver{
 impl Drop for Saver{fn drop(&mut self){let contexts=self.active.keys().cloned().collect::<Vec<_>>();for ctx in contexts{self.close(&ctx)}}}
 impl Plugin for Saver{
     fn event(&mut self,event:Event,sdk:&mut Client)->Result<(),String>{
-        let ctx=event.context;
+        let ctx=event.context.clone();
         match event.name.as_str(){
             "willAppear"=>{self.contexts.insert(ctx.clone(),event.settings().clone());self.display(&ctx,sdk)?;},
             "didReceiveSettings"=>{self.contexts.insert(ctx.clone(),event.settings().clone());},
