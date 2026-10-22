@@ -193,7 +193,7 @@ fn parse_client(raw: &str) -> Result<Secret, String> {
     let secret = desktop["client_secret"].as_str().filter(|s| !s.is_empty()).ok_or("client_secret absent")?;
     Ok(Secret { client_id: id.into(), client_secret: secret.into(), refresh_token: String::new() })
 }
-enum ResultEvent { Authorized(String, Result<Secret, String>), Tested(String, Result<(), String>) }
+enum ResultEvent { Authorized(String, u64, Result<Secret, String>), Tested(String, Result<(), String>) }
 #[derive(Default)] struct Google {
     states: HashMap<String, Value>,
     tx: Option<Sender<ResultEvent>>, rx: Option<Receiver<ResultEvent>>,
@@ -219,6 +219,7 @@ impl Google {
 impl Plugin for Google {
     fn event(&mut self, event: Event, sdk: &mut Client) -> Result<(), String> {
         let ctx = event.context.clone();
+        let outcome = (|| -> Result<(), String> {
         match event.name.as_str() {
             "willAppear" => { self.states.insert(ctx.clone(), event.settings().clone()); sdk.title(&ctx, "Google")?; }
             "willDisappear" => { self.states.remove(&ctx); }
@@ -228,7 +229,7 @@ impl Plugin for Google {
             "sendToPlugin" => match event.payload["type"].as_str().unwrap_or("") {
                 "status" => self.send_status(&ctx, sdk)?,
                 "import" => {
-                    let result = event.payload["json"].as_str().ok_or("JSON absent").and_then(parse_client).and_then(|s| save(&s));
+                    let result = event.payload["json"].as_str().ok_or_else(|| "JSON absent".to_string()).and_then(parse_client).and_then(|s| save(&s));
                     match result { Ok(()) => sdk.inspector(&ctx, json!({"type":"message","message":"Identifiant importé ; connectez-vous."}))?, Err(e) => sdk.inspector(&ctx, json!({"type":"message","message":e}))? }
                     self.send_status(&ctx, sdk)?;
                 }
@@ -241,6 +242,7 @@ impl Plugin for Google {
                     let link = auth_url(&secret.client_id, &redirect, &state, &challenge);
                     let tx = self.tx.as_ref().ok_or("Canal indisponible")?.clone();
                     let origin = ctx.clone();
+                    let generation = self.generation;
                     self.pending = true;
                     thread::spawn(move || {
                         let result = callback(listener, &state).and_then(|code| {
@@ -248,13 +250,14 @@ impl Plugin for Google {
                             let refresh = data["refresh_token"].as_str().filter(|s| !s.is_empty()).ok_or("Google n'a pas remis de refresh token")?;
                             Ok(Secret { refresh_token: refresh.into(), ..secret })
                         });
-                        let _ = tx.send(ResultEvent::Authorized(origin, result));
+                        let _ = tx.send(ResultEvent::Authorized(origin, generation, result));
                     });
                     sdk.send(json!({"event":"openUrl","payload":{"url":link}}))?;
                     self.send_status(&ctx, sdk)?;
                 }
                 "disconnect" => {
                     self.generation += 1;
+                    self.pending = false;
                     match fs::remove_file(secret_path()?) { Ok(()) => {}, Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}, Err(_) => return Err("Suppression impossible".into()) }
                     sdk.title(&ctx, "Non connecté")?; self.send_status(&ctx, sdk)?;
                 }
@@ -264,11 +267,18 @@ impl Plugin for Google {
             _ => {}
         }
         Ok(())
+        })();
+        if let Err(message) = outcome {
+            let _ = sdk.inspector(&ctx, json!({"type":"message","message":message}));
+            Self::show_error(&ctx, &message, sdk)?;
+        }
+        Ok(())
     }
     fn tick(&mut self, sdk: &mut Client) -> Result<(), String> {
         while let Ok(result) = self.rx.as_ref().ok_or("Canal indisponible")?.try_recv() {
             match result {
-                ResultEvent::Authorized(ctx, result) => {
+                ResultEvent::Authorized(ctx, generation, result) => {
+                    if generation != self.generation { continue; }
                     self.pending = false;
                     match result.and_then(|s| save(&s)) {
                         Ok(()) => sdk.inspector(&ctx, json!({"type":"message","message":"Connexion établie."}))?,
