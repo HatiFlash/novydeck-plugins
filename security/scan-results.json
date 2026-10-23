@@ -1,0 +1,225 @@
+{
+  "plugins": [
+    {
+      "id": "com.novydeck.clock",
+      "version": "1.0.1",
+      "sha256": "cbd9de83a20155a2556ece59f8a262e8f9cb120540e325798452d0b10441475c",
+      "date": "2026-10-23T12:52:52.886146+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.clock.sdPlugin/bin/novydeck-clock.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 947846,
+      "unpacked_bytes": 1918470
+    },
+    {
+      "id": "com.novydeck.counter",
+      "version": "1.0.1",
+      "sha256": "00c3fc0213d47331092a47c8845391fa85d328692b177500827bca7907b95513",
+      "date": "2026-10-23T12:52:54.406093+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.counter.sdPlugin/bin/novydeck-counter.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 937348,
+      "unpacked_bytes": 1902930
+    },
+    {
+      "id": "com.novydeck.sysmonitor",
+      "version": "1.0.1",
+      "sha256": "e884e8d5f86b97c5ddbbf8493b2f332c17e2dda5fb98d48df0eff45cbd5b3be0",
+      "date": "2026-10-23T12:52:55.336330+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.sysmonitor.sdPlugin/bin/novydeck-sysmonitor.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 1026918,
+      "unpacked_bytes": 2130423
+    },
+    {
+      "id": "com.novydeck.nowplaying",
+      "version": "1.0.1",
+      "sha256": "72684fc575b6c8e04bc0f8314cd1c6676fdda6ff17fed5ac87caf19a9b85ca6a",
+      "date": "2026-10-23T12:52:56.280218+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.nowplaying.sdPlugin/bin/novydeck-nowplaying.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 1279694,
+      "unpacked_bytes": 2698208
+    },
+    {
+      "id": "com.novydeck.oledsaver",
+      "version": "1.0.1",
+      "sha256": "92114d4be1389f6d42ea9e3ec67beacfe369ca59e77eb7f89d529fc52046327c",
+      "date": "2026-10-23T12:52:57.236020+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.oledsaver.sdPlugin/bin/novydeck-oledsaver.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 943005,
+      "unpacked_bytes": 1934042
+    },
+    {
+      "id": "com.novydeck.homeassistant",
+      "version": "1.0.1",
+      "sha256": "49d0e17d9d8e2bab83f654b151ed13a0cdc8cfc66e488c3e2d4da09f552eef6c",
+      "date": "2026-10-23T12:52:58.152401+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.homeassistant.sdPlugin/bin/novydeck-homeassistant.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 2651377,
+      "unpacked_bytes": 6007328
+    },
+    {
+      "id": "com.novydeck.googleassistant",
+      "version": "1.0.1",
+      "sha256": "09286866ad4aaf7fec278b8bf65959aaddcb825f6f75a725a7d4bff8a415d7af",
+      "date": "2026-10-23T12:52:59.211344+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.googleassistant.sdPlugin/bin/novydeck-googleassistant.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 2396071,
+      "unpacked_bytes": 5718179
+    },
+    {
+      "id": "com.elgato.cpu",
+      "version": "1.2",
+      "sha256": "582c03fa2c5118e4a083c5b32d411cede07383668d8f4be4c9f131a13a417276",
+      "date": "2026-10-23T12:53:00.238334+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.elgato.cpu.sdPlugin/cpu.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        },
+        {
+          "severity": "info",
+          "rule": "missing_license",
+          "file": "",
+          "detail": "No license file in the archive"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 467547,
+      "unpacked_bytes": 1122096
+    },
+    {
+      "id": "com.barraider.stopwatch",
+      "version": "1.1",
+      "sha256": "f7551a2b535c1956849c491369b1d85f4b9891edcd1ce759fbcc6fdc24c5f1dc",
+      "date": "2026-10-23T12:53:01.125327+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.barraider.stopwatch.sdPlugin/com.barraider.stopwatch.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        },
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.barraider.stopwatch.sdPlugin/CommandLine.dll",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        },
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.barraider.stopwatch.sdPlugin/Newtonsoft.Json.dll",
+          "detail": "Executable/DLL present; Authenticode: Valid|Json.NET (.NET Foundation)"
+        },
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.barraider.stopwatch.sdPlugin/NLog.dll",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        },
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.barraider.stopwatch.sdPlugin/streamdeck-client-csharp.dll",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        },
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.barraider.stopwatch.sdPlugin/StreamDeckTools.dll",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        },
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.barraider.stopwatch.sdPlugin/System.Drawing.Common.dll",
+          "detail": "Executable/DLL present; Authenticode: Valid|Microsoft Corporation"
+        },
+        {
+          "severity": "info",
+          "rule": "missing_license",
+          "file": "",
+          "detail": "No license file in the archive"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [
+        "https://BarRaider.github.io"
+      ],
+      "archive_bytes": 1045435,
+      "unpacked_bytes": 4522198
+    }
+  ]
+}
