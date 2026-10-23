@@ -35,6 +35,18 @@ class SecurityScanTests(unittest.TestCase):
         self.assertEqual(urls, ['https://example.org/path'])
         self.assertGreater(size, 0)
 
+    def test_codepath_without_exe_and_declared_license_are_not_blocking(self):
+        self.plugin['license'] = 'MIT'
+        data = self.archive({'x.sdPlugin/manifest.json': '{"Version":"1.0.2","CodePath":"x","OS":[{"Platform":"windows"}]}',
+                             'x.sdPlugin/x.exe': 'MZ'})
+        scan.signature = lambda path: 'NotSigned|'
+        with tempfile.TemporaryDirectory() as folder:
+            findings, _, _ = scan.inspect_archive(data, Path(folder), self.plugin)
+        rules = {f['rule']: f['severity'] for f in findings}
+        self.assertNotIn('manifest_codepath_missing', rules)
+        self.assertEqual(rules['native_binary'], 'info')
+        self.assertEqual(rules['missing_license'], 'info')
+
     def test_path_traversal_refused(self):
         data = self.archive({'../outside.txt': 'bad'})
         with tempfile.TemporaryDirectory() as folder:

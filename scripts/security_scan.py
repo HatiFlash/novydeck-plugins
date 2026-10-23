@@ -62,15 +62,21 @@ def defender_scan(directory):
 
 
 def signature(path):
+    """Authenticode status of one file: Valid, NotSigned, HashMismatch, NotTrusted... or Error: <detail>."""
     # Pass a path as data, not interpolated into a PowerShell expression.
-    script = 'Get-AuthenticodeSignature -LiteralPath $env:NOVYDECK_SCAN_FILE | Select-Object -ExpandProperty Status'
+    script = ('$ErrorActionPreference="Stop"; Import-Module Microsoft.PowerShell.Security; '
+              '$s = Get-AuthenticodeSignature -LiteralPath $env:NOVYDECK_SCAN_FILE; '
+              '$n = if ($s.SignerCertificate) { $s.SignerCertificate.GetNameInfo(0, $false) } else { "" }; '
+              '[Console]::Out.Write([string]$s.Status + "|" + $n)')
     try:
-        result = subprocess.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', script],
+        result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
                                 env={**os.environ, 'NOVYDECK_SCAN_FILE': str(path)}, capture_output=True,
-                                text=True, timeout=30)
-        return result.stdout.strip() if result.returncode == 0 else 'Error'
-    except (OSError, subprocess.TimeoutExpired):
-        return 'Error'
+                                text=True, timeout=60)
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+        return 'Error: ' + (result.stderr or result.stdout).strip()[:160]
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 'Error: ' + str(exc)[:160]
 
 
 def inspect_archive(data, directory, plugin):
@@ -97,7 +103,10 @@ def inspect_archive(data, directory, plugin):
                 shutil.copyfileobj(source, target)
             suffix = dest.suffix.lower()
             if suffix in BINARY_SUFFIXES:
-                results.append(finding('review', 'native_binary', name, f'Executable/DLL present; Authenticode: {signature(dest)}'))
+                status = signature(dest)
+                # Native code is normal for Stream Deck plugins: informational unless the signature is broken.
+                severity = 'high' if status.startswith(('HashMismatch', 'NotTrusted')) else 'info'
+                results.append(finding(severity, 'native_binary', name, f'Executable/DLL present; Authenticode: {status}'))
             if suffix in SCRIPT_SUFFIXES:
                 text = dest.read_bytes()[:2 * 1024 * 1024].decode('utf-8', errors='replace')
                 for rule, (pattern, severity) in RULES.items():
@@ -116,14 +125,17 @@ def inspect_archive(data, directory, plugin):
         os_list = manifest.get('OS', [])
         if not isinstance(codepath, str) or not codepath:
             results.append(finding('review', 'manifest_codepath', name, 'No Windows CodePath declared'))
-        elif not (directory / Path(name).parent / codepath).is_file():
+        elif not any((directory / Path(name).parent / candidate).is_file()
+                     for candidate in (codepath, codepath + '.exe')):  # Stream Deck appends .exe on Windows
             results.append(finding('high', 'manifest_codepath_missing', name, f'CodePath missing: {codepath[:120]}'))
         if manifest.get('Version') != plugin['version']:
             results.append(finding('review', 'manifest_version', name, f"Declared {manifest.get('Version')!s}; registry {plugin['version']}"))
         if not isinstance(os_list, list) or not any(isinstance(item, dict) and item.get('Platform', '').lower() == 'windows' for item in os_list):
             results.append(finding('review', 'manifest_os', name, 'Windows OS not declared'))
     if not any(p.is_file() and (p.name.lower().startswith('license') or p.name.lower().startswith('licence')) for p in directory.rglob('*')):
-        results.append(finding('review', 'missing_license', '', 'No license file in the archive'))
+        # Licence declared in the registry and release from the official repository: informational only.
+        severity = 'info' if plugin.get('license') and source_match(plugin) else 'review'
+        results.append(finding(severity, 'missing_license', '', 'No license file in the archive'))
     if not source_match(plugin):
         results.append(finding('review', 'source_mismatch', '', 'Release URL does not match homepage GitHub repository'))
     return results, sorted(domains), unpacked
@@ -147,7 +159,7 @@ def scan(plugin):
     except (ValueError, OSError, zipfile.BadZipFile, json.JSONDecodeError, RuntimeError) as exc:
         result['findings'].append(finding('high', 'scan_error', '', str(exc)))
     result['verdict'] = ('failed' if result['defender'] == 'threat' or any(f['severity'] == 'high' for f in result['findings']) else
-                         'review' if result['defender'] != 'clean' or result['findings'] else 'passed')
+                         'review' if result['defender'] != 'clean' or any(f['severity'] != 'info' for f in result['findings']) else 'passed')
     return result
 
 
