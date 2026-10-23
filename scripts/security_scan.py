@@ -64,13 +64,19 @@ def defender_scan(directory):
 def signature(path):
     """Authenticode status of one file: Valid, NotSigned, HashMismatch, NotTrusted... or Error: <detail>."""
     # Pass a path as data, not interpolated into a PowerShell expression.
-    script = ('$ErrorActionPreference="Stop"; Import-Module Microsoft.PowerShell.Security; '
+    script = ('$ErrorActionPreference="Stop"; '
               '$s = Get-AuthenticodeSignature -LiteralPath $env:NOVYDECK_SCAN_FILE; '
               '$n = if ($s.SignerCertificate) { $s.SignerCertificate.GetNameInfo(0, $false) } else { "" }; '
               '[Console]::Out.Write([string]$s.Status + "|" + $n)')
     try:
-        result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
-                                env={**os.environ, 'NOVYDECK_SCAN_FILE': str(path)}, capture_output=True,
+        # pwsh (PowerShell 7) : Windows PowerShell 5 lancé depuis un environnement pwsh charge des
+        # modules incompatibles (PSModulePath) et Get-AuthenticodeSignature échoue.
+        shell = shutil.which('pwsh') or 'powershell.exe'
+        env = {**os.environ, 'NOVYDECK_SCAN_FILE': str(path)}
+        if not shell.lower().endswith('pwsh.exe') and not shell.lower().endswith('pwsh'):
+            env.pop('PSModulePath', None)
+        result = subprocess.run([shell, '-NoProfile', '-NonInteractive', '-Command', script],
+                                env=env, capture_output=True,
                                 text=True, timeout=60)
         if result.returncode == 0 and result.stdout.strip():
             return result.stdout.strip()
