@@ -1,5 +1,5 @@
 {
-  "Name":"NovyDeck Now Playing", "Description":"Media controls and artwork / Lecteur et pochette", "Author":"NovyDeck", "Version":"1.0.1", "SDKVersion":2,
+  "Name":"NovyDeck Now Playing", "Description":"Media controls and artwork / Lecteur et pochette", "Author":"NovyDeck", "Version":"1.0.2", "SDKVersion":2,
   "CodePathWin":"bin/novydeck-nowplaying.exe", "Icon":"images/plugin-icon", "URL":"https://github.com/HatiFlash/novydeck-plugins",
   "OS":[{"Platform":"windows","MinimumVersion":"10"}], "Software":{"MinimumVersion":"6.0"},
   "Actions":[

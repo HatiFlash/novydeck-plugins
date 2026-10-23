@@ -1,21 +1,11 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><title>Counter settings</title>
-<style>body{background:#252831;color:white;font:14px sans-serif;padding:12px}label{display:block;margin:12px 0}input,textarea{max-width:230px}</style>
-<label>Step / Pas <input id="step" type="number" value="1"></label>
-<label>Value / Valeur <input id="value" type="number" value="0"></label>
-<label>Reset value / Remise à zéro <input id="reset" type="number" value="0"></label>
-<label>Quick note / Note rapide <textarea id="text" maxlength="2048"></textarea></label>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Counter settings</title><link rel="stylesheet" href="inspector.css">
+<h1 data-i18n="title"></h1><h2 data-i18n="subtitle"></h2><section class="card"><h2 data-i18n="numbers"></h2><div class="field"><label for="step" data-i18n="step"></label><input id="step" type="number" step="1" value="1"></div><div class="field"><label for="value" data-i18n="value"></label><input id="value" type="number" step="1" value="0"></div><div class="field"><label for="reset" data-i18n="reset"></label><input id="reset" type="number" step="1" value="0"><small data-i18n="resetHelp"></small></div><div id="error" class="error" role="alert"></div></section><section class="card"><h2 data-i18n="note"></h2><label for="text" data-i18n="text"></label><textarea id="text" maxlength="2048" rows="4"></textarea><small data-i18n="noteHelp"></small></section><div id="notice" role="status"></div>
 <script>
-let ws,context,settings={};
-function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){
-  try{const a=JSON.parse(actionInfo);context=a.context;settings=a.payload?.settings||{};}catch(e){console.error(e);}
-  function fill(){for(const key of ['step','value','reset','text'])if(settings[key]!==undefined)document.getElementById(key).value=settings[key];}
-  fill();ws=new WebSocket('ws://127.0.0.1:'+port);
-  ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));ws.send(JSON.stringify({event:'getSettings',context}));};
-  ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.event==='didReceiveSettings'&&m.context===context){settings=m.payload?.settings||{};fill();}};
-}
-for(const key of ['step','value','reset','text'])document.getElementById(key).addEventListener('change',()=>{
-  settings={...settings};for(const k of ['step','value','reset'])settings[k]=Number(document.getElementById(k).value)||0;
-  settings.text=document.getElementById('text').value;
-  if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({event:'setSettings',context,payload:settings}));
-});
+const copy={en:{title:'Counter',subtitle:'Action settings',numbers:'Numbers',step:'Step',value:'Current value',reset:'Reset value',resetHelp:'Value restored when the counter is reset.',note:'Quick note',text:'Note text',noteHelp:'Up to 2048 characters.',invalid:'Enter a whole number for each numeric field.',saved:'Saved'},fr:{title:'Compteur',subtitle:'Réglages de l’action',numbers:'Valeurs',step:'Pas',value:'Valeur actuelle',reset:'Valeur de remise à zéro',resetHelp:'Valeur rétablie à la remise à zéro.',note:'Note rapide',text:'Texte de la note',noteHelp:'Jusqu’à 2048 caractères.',invalid:'Saisissez un entier dans chaque champ numérique.',saved:'Enregistré'}};
+let ws,context,settings={},lang='en',noticeTimer;const $=id=>document.getElementById(id);
+function translate(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=copy[lang][el.dataset.i18n]);}
+function fill(){for(const key of ['step','value','reset','text'])if(settings[key]!==undefined)$(key).value=settings[key];}
+function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){try{lang=JSON.parse(info).application.language==='fr'?'fr':'en';}catch(_){}translate();try{const a=JSON.parse(actionInfo);context=a.context;settings=a.payload?.settings||{};}catch(e){console.error(e);}fill();ws=new WebSocket('ws://127.0.0.1:'+port);ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));ws.send(JSON.stringify({event:'getSettings',context}));};ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch(_){return;}if(m.event==='didReceiveSettings'&&m.context===context){settings=m.payload?.settings||{};fill();}};}
+function save(){const numbers={};for(const key of ['step','value','reset']){const value=$(key).value.trim(),number=Number(value);if(!value||!Number.isSafeInteger(number)){$('error').textContent=copy[lang].invalid;return;}numbers[key]=number;}$('error').textContent='';settings={...settings,...numbers,text:$('text').value};if(ws?.readyState===WebSocket.OPEN){ws.send(JSON.stringify({event:'setSettings',context,payload:settings}));$('notice').textContent=copy[lang].saved;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').textContent='',2500);}}
+for(const key of ['step','value','reset','text'])$(key).addEventListener('change',save);translate();
 </script></html>

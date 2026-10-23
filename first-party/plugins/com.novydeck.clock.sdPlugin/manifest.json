@@ -2,7 +2,7 @@
   "Name": "NovyDeck Clock",
   "Description": "Clock, timer and stopwatch / Horloge, minuteur et chronomètre",
   "Author": "NovyDeck",
-  "Version": "1.0.1",
+  "Version": "1.0.2",
   "SDKVersion": 2,
   "CodePathWin": "bin/novydeck-clock.exe",
   "Icon": "images/plugin-icon",

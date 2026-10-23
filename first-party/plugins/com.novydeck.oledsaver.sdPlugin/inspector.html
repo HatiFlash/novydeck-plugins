@@ -1,27 +1,11 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><title>OLED Saver</title>
-<style>body{background:#252831;color:white;font:14px sans-serif;padding:12px}label{display:block;margin:12px 0}</style>
-<label>Monitor / Écran <select id="monitor"><option value="0">Primary / Principal</option></select></label>
-<label>Close on mouse movement / Fermer au mouvement <input id="closeOnMove" type="checkbox"></label>
-<p>Closes on keyboard, click or another key press. No Windows power settings are changed.<br>Se ferme au clavier, clic ou nouvel appui. Aucun réglage Windows modifié.</p>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>OLED Saver</title><link rel="stylesheet" href="inspector.css">
+<h1 data-i18n="title"></h1><h2 data-i18n="subtitle"></h2><section class="card"><h2 data-i18n="display"></h2><div class="field"><label for="monitor" data-i18n="monitor"></label><select id="monitor"><option value="0" data-i18n="primary"></option></select></div><div class="field"><label class="switch"><input id="closeOnMove" type="checkbox"><span data-i18n="close"></span></label><small data-i18n="help"></small></div></section><div id="notice" role="status"></div>
 <script>
-let ws,context,settings={};
-function fill(){document.getElementById('monitor').value=String(settings.monitor??0);document.getElementById('closeOnMove').checked=settings.closeOnMove===true;}
-function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){
-  try{const action=JSON.parse(actionInfo);context=action.context;settings=action.payload?.settings||{};}catch(e){console.error(e);}
-  fill();ws=new WebSocket('ws://127.0.0.1:'+port);
-  ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));ws.send(JSON.stringify({event:'getSettings',context}));};
-  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}
-    if(m.context!==context)return;
-    if(m.event==='didReceiveSettings'){settings=m.payload?.settings||{};fill();}
-    if(m.event==='sendToPropertyInspector' && Array.isArray(m.payload?.monitors)){
-      const select=document.getElementById('monitor');select.replaceChildren();
-      for(const item of m.payload.monitors){const option=document.createElement('option');option.value=String(item.index);option.textContent=`${item.name} (${item.width} × ${item.height})`;select.append(option);}
-      fill();
-    }
-  };
-}
-for(const id of ['monitor','closeOnMove'])document.getElementById(id).addEventListener('change',()=>{
-  settings={...settings,monitor:Number(document.getElementById('monitor').value),closeOnMove:document.getElementById('closeOnMove').checked};
-  if(ws?.readyState===WebSocket.OPEN)ws.send(JSON.stringify({event:'setSettings',context,payload:settings}));
-});
+const copy={en:{title:'OLED Saver',subtitle:'Action settings',display:'Display',monitor:'Monitor',primary:'Primary',close:'Close on mouse movement',help:'Also closes on keyboard input, click or another key press. Windows power settings are not changed.',saved:'Saved'},fr:{title:'Veille OLED',subtitle:'Réglages de l’action',display:'Écran',monitor:'Moniteur',primary:'Principal',close:'Fermer au mouvement de la souris',help:'Se ferme aussi au clavier, au clic ou à un nouvel appui. Aucun réglage d’alimentation Windows n’est modifié.',saved:'Enregistré'}};
+let ws,context,settings={},lang='en',noticeTimer;const $=id=>document.getElementById(id);
+function translate(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=copy[lang][el.dataset.i18n]);}
+function fill(){const monitor=String(settings.monitor??0);if([...$('monitor').options].some(opt=>opt.value===monitor))$('monitor').value=monitor;$('closeOnMove').checked=settings.closeOnMove===true;}
+function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){try{lang=JSON.parse(info).application.language==='fr'?'fr':'en';}catch(_){}translate();try{const a=JSON.parse(actionInfo);context=a.context;settings=a.payload?.settings||{};}catch(e){console.error(e);}fill();ws=new WebSocket('ws://127.0.0.1:'+port);ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));ws.send(JSON.stringify({event:'getSettings',context}));};ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch(_){return;}if(m.context!==context)return;if(m.event==='didReceiveSettings'){settings=m.payload?.settings||{};fill();}if(m.event==='sendToPropertyInspector'&&Array.isArray(m.payload?.monitors)){const select=$('monitor');select.replaceChildren();for(const item of m.payload.monitors){const option=document.createElement('option');option.value=String(item.index);option.textContent=`${item.name} (${item.width} × ${item.height})`;select.append(option);}fill();}};}
+function save(){settings={...settings,monitor:Number($('monitor').value),closeOnMove:$('closeOnMove').checked};if(ws?.readyState===WebSocket.OPEN){ws.send(JSON.stringify({event:'setSettings',context,payload:settings}));$('notice').textContent=copy[lang].saved;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').textContent='',2500);}}
+for(const id of ['monitor','closeOnMove'])$(id).addEventListener('change',save);translate();
 </script></html>

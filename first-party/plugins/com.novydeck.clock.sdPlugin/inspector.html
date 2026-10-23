@@ -1,20 +1,14 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><title>Clock settings</title>
-<style>body{background:#252831;color:white;font:14px sans-serif;padding:12px}label{display:block;margin:12px 0}input{max-width:170px}</style>
-<label>24 h / 12 h <select id="format12"><option value="false">24 h</option><option value="true">12 h</option></select></label>
-<label>Show date / Afficher la date <input id="showDate" type="checkbox"></label>
-<label>Timer duration (seconds) / Durée (secondes) <input id="seconds" type="number" min="1" max="86400" value="300"></label>
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clock settings</title><link rel="stylesheet" href="inspector.css">
+<h1 data-i18n="title"></h1><h2 data-i18n="subtitle"></h2>
+<section class="card"><div class="field"><label data-i18n="format"></label><div class="segments"><label><input name="format" type="radio" value="false" checked><span>24 h</span></label><label><input name="format" type="radio" value="true"><span>12 h</span></label></div></div><div class="field"><label class="switch"><input id="showDate" type="checkbox"><span data-i18n="date"></span></label><small data-i18n="dateHelp"></small></div></section>
+<section class="card"><h2 data-i18n="timer"></h2><div class="field"><label for="seconds" data-i18n="duration"></label><input id="seconds" type="number" min="1" max="86400" step="1" value="300"><small data-i18n="durationHelp"></small><div id="error" class="error" role="alert"></div></div></section><div id="notice" role="status"></div>
 <script>
-let ws,context,settings={};
-function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){
-  try { const a=JSON.parse(actionInfo);context=a.context;settings=a.payload?.settings||{}; } catch(e) { console.error(e); }
-  function fill(){for(const key of ['format12','showDate','seconds']) if(settings[key]!==undefined) document.getElementById(key)[key==='showDate'?'checked':'value']=key==='showDate'?Boolean(settings[key]):String(settings[key]);}
-  fill();
-  ws=new WebSocket('ws://127.0.0.1:'+port);
-  ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));ws.send(JSON.stringify({event:'getSettings',context}));};
-  ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.event==='didReceiveSettings'&&m.context===context){settings=m.payload?.settings||{};fill();}};
-}
-for(const key of ['format12','showDate','seconds']) document.getElementById(key).addEventListener('change',()=>{
-  settings={...settings,format12:document.getElementById('format12').value==='true',showDate:document.getElementById('showDate').checked,seconds:Math.max(1,Math.min(86400,Number(document.getElementById('seconds').value)||300))};
-  if(ws?.readyState===WebSocket.OPEN) ws.send(JSON.stringify({event:'setSettings',context,payload:settings}));
-});
+const copy={en:{title:'Clock',subtitle:'Action settings',format:'Time format',date:'Show date',dateHelp:'Display the date below the clock.',timer:'Timer',duration:'Duration (seconds)',durationHelp:'Whole number between 1 and 86400.',invalid:'Enter a whole number from 1 to 86400.',saved:'Saved'},fr:{title:'Horloge',subtitle:'Réglages de l’action',format:'Format horaire',date:'Afficher la date',dateHelp:'Affiche la date sous l’horloge.',timer:'Minuteur',duration:'Durée (secondes)',durationHelp:'Nombre entier de 1 à 86400.',invalid:'Saisissez un entier entre 1 et 86400.',saved:'Enregistré'}};
+let ws,context,settings={},lang='en',noticeTimer;
+const $=id=>document.getElementById(id);
+function translate(){document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>el.textContent=copy[lang][el.dataset.i18n]);}
+function fill(){document.querySelector(`input[name=format][value="${settings.format12===true}"]`).checked=true;$('showDate').checked=settings.showDate===true;$('seconds').value=String(settings.seconds??300);}
+function connectElgatoStreamDeckSocket(port,uuid,registerEvent,info,actionInfo){try{lang=JSON.parse(info).application.language==='fr'?'fr':'en';}catch(_){}translate();try{const a=JSON.parse(actionInfo);context=a.context;settings=a.payload?.settings||{};}catch(e){console.error(e);}fill();ws=new WebSocket('ws://127.0.0.1:'+port);ws.onopen=()=>{ws.send(JSON.stringify({event:registerEvent,uuid}));ws.send(JSON.stringify({event:'getSettings',context}));};ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch(_){return;}if(m.event==='didReceiveSettings'&&m.context===context){settings=m.payload?.settings||{};fill();}};}
+function save(){const seconds=Number($('seconds').value);if(!$('seconds').value.trim()||!Number.isInteger(seconds)||seconds<1||seconds>86400){$('error').textContent=copy[lang].invalid;return;}$('error').textContent='';settings={...settings,format12:document.querySelector('input[name=format]:checked').value==='true',showDate:$('showDate').checked,seconds};if(ws?.readyState===WebSocket.OPEN){ws.send(JSON.stringify({event:'setSettings',context,payload:settings}));$('notice').textContent=copy[lang].saved;clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>$('notice').textContent='',2500);}}
+for(const el of document.querySelectorAll('input'))el.addEventListener('change',save);translate();
 </script></html>

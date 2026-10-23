@@ -35,6 +35,7 @@ jobs:
           }
       - run: cargo run --release --locked --bin render-previews
       - run: python tools/make_icons.py
+      - run: python tools/capture_inspectors.py
       - run: python tools/package.py
       - uses: actions/upload-artifact@v4
         with:
@@ -43,6 +44,7 @@ jobs:
             first-party/dist/*.streamDeckPlugin
             first-party/dist/SHA256SUMS.txt
             first-party/previews/*.png
+            first-party/inspector-previews/*.png
   release:
     if: startsWith(github.ref, 'refs/tags/first-party-v')
     needs: build

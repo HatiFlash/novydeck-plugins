@@ -2,7 +2,7 @@
   "Name": "NovyDeck Counter",
   "Description": "Counter, quick note and clipboard / Compteur, note rapide et presse-papiers",
   "Author": "NovyDeck",
-  "Version": "1.0.1",
+  "Version": "1.0.2",
   "SDKVersion": 2,
   "CodePathWin": "bin/novydeck-counter.exe",
   "Icon": "images/plugin-icon",

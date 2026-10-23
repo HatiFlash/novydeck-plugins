@@ -2,7 +2,7 @@
   "Name": "NovyDeck Google Assistant Command",
   "Description": "Google Home text commands / Commandes Google Home par texte",
   "Author": "NovyDeck",
-  "Version": "1.0.1",
+  "Version": "1.0.2",
   "SDKVersion": 2,
   "CodePathWin": "bin/novydeck-googleassistant.exe",
   "Icon": "images/plugin-icon",
