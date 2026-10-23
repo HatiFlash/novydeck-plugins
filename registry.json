@@ -329,7 +329,11 @@
       "icon": "https://raw.githubusercontent.com/elgatosf/streamdeck-cpu/master/Sources/com.elgato.cpu.sdPlugin/pluginIcon@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/elgatosf/streamdeck-cpu/master/screenshot.png"
-      ]
+      ],
+      "tested_by_novydeck": {
+        "version": "1.2",
+        "date": "2026-10-22"
+      }
     },
     {
       "id": "com.barraider.stopwatch",
@@ -361,7 +365,11 @@
       "min_novydeck": "0.8.12",
       "requires": "Windows 10+",
       "download": "https://github.com/BarRaider/streamdeck-stopwatchdemo/releases/download/v1.1/com.barraider.stopwatch.streamDeckPlugin",
-      "sha256": "f7551a2b535c1956849c491369b1d85f4b9891edcd1ce759fbcc6fdc24c5f1dc"
+      "sha256": "f7551a2b535c1956849c491369b1d85f4b9891edcd1ce759fbcc6fdc24c5f1dc",
+      "tested_by_novydeck": {
+        "version": "1.1",
+        "date": "2026-10-22"
+      }
     }
   ]
 }
