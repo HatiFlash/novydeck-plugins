@@ -16,6 +16,8 @@ An entry includes an HTTPS homepage and official release archive, SHA-256, free/
 
 ## Use the community library in NovyDeck
 
+The registry metadata supports three distinct badges: “Official” (`com.novydeck.*`, publisher identity), “Scanned” (automated archive check, see `security/scan-results.json`; only a passed result for the matching SHA-256), and “Tested by NovyDeck” (manual test of the exact version, `tested_by_novydeck` date/version). GitHub Actions checks SHA-256, Microsoft Defender and static risk heuristics on PRs and weekly. A scan does not guarantee absence of risk; review findings require human evaluation. The app's current “Community — unverified” label is not automatically replaced by these metadata badges.
+
 In the app, open **Library → Plugins → Community**. Connecting to GitHub requires your consent; after you agree, confirm the connection. NovyDeck verifies the downloaded archive against its published SHA-256 before import. Community entries are marked **“Community — unverified”**: a matching checksum verifies the download, not the safety of third-party code. Review each plugin before installing.
 
 See [contribution guidelines](CONTRIBUTING.md) and the [registry schema](schema/registry.schema.json).

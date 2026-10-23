@@ -1,7 +1,7 @@
 name: First-party Windows plugins
 on:
   push:
-    branches: [feat/first-party-plugins]
+    branches: [feat/first-party-plugins, feat/first-party-102]
     tags: ['first-party-v*']
   pull_request:
   workflow_dispatch:

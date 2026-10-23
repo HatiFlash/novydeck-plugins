@@ -1,0 +1,47 @@
+name: Catalogue security scan
+on:
+  pull_request:
+    paths: [registry.json, scripts/security_scan.py, .github/workflows/security-scan.yml]
+  push:
+    branches: [main, feat/first-party-102]
+    paths: [registry.json, scripts/security_scan.py, .github/workflows/security-scan.yml]
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  security-scan:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Update Defender signatures
+        shell: pwsh
+        run: Update-MpSignature -ErrorAction Stop
+      - name: Inspect registered archives
+        id: scan
+        shell: pwsh
+        run: python scripts/security_scan.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-results
+          path: security/scan-results.json
+          if-no-files-found: warn
+      - name: Commit results on main (scheduled/manual only)
+        if: steps.scan.outcome == 'success' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add security/scan-results.json
+          if (-not (git diff --cached --quiet)) {
+            git commit -m 'Update catalogue security scan results'
+            git push origin HEAD:main
+          }

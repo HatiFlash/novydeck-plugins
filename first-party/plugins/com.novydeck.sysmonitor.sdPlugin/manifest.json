@@ -6,6 +6,6 @@
     {"UUID":"com.novydeck.sysmonitor.cpu","Name":"CPU","Tooltip":"CPU load / Charge CPU","Icon":"images/cpu-icon","Controllers":["Keypad"],"States":[{"Image":"images/cpu"}]},
     {"UUID":"com.novydeck.sysmonitor.ram","Name":"RAM","Tooltip":"Memory / Mémoire","Icon":"images/ram-icon","Controllers":["Keypad"],"States":[{"Image":"images/ram"}]},
     {"UUID":"com.novydeck.sysmonitor.gpu","Name":"GPU","Tooltip":"GPU engine load / Charge GPU","Icon":"images/gpu-icon","Controllers":["Keypad"],"States":[{"Image":"images/gpu"}]},
-    {"UUID":"com.novydeck.sysmonitor.temperature","Name":"Temperature","Tooltip":"CPU n/d, NVIDIA GPU temperature / Température","Icon":"images/temperature-icon","Controllers":["Keypad"],"States":[{"Image":"images/temperature"}]}
+    {"UUID":"com.novydeck.sysmonitor.temperature","Name":"Temperature","Tooltip":"CPU thermal zone if available, NVIDIA GPU temperature / Température zone CPU si disponible, GPU NVIDIA","Icon":"images/temperature-icon","Controllers":["Keypad"],"States":[{"Image":"images/temperature"}]}
   ]
 }

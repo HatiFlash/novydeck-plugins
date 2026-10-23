@@ -58,7 +58,7 @@ def validate_registry(path):
         if not isinstance(plugin, dict):
             fail(f"{label}: doit être un objet")
         required = {"id", "name", "author", "version", "description", "homepage", "download", "sha256", "license", "tested_decks", "min_novydeck"}
-        allowed = required | {"description_fr", "uuid", "category", "summary", "summary_fr", "icon", "screenshots", "actions", "tags", "requires"}
+        allowed = required | {"description_fr", "uuid", "category", "summary", "summary_fr", "icon", "screenshots", "actions", "tags", "requires", "tested_by_novydeck"}
         if not required <= plugin.keys() or plugin.keys() - allowed:
             fail(f"{label}: champs requis manquants ou champs inconnus")
         ident = plugin["id"]
@@ -71,6 +71,20 @@ def validate_registry(path):
                 fail(f"{label}.{field}: valeur non vide requise")
         numeric_version(plugin["version"], f"{label}.version")
         numeric_version(plugin["min_novydeck"], f"{label}.min_novydeck")
+        if "tested_by_novydeck" in plugin:
+            tested = plugin["tested_by_novydeck"]
+            if not isinstance(tested, dict) or set(tested) != {"version", "date"}:
+                fail(f"{label}.tested_by_novydeck: version et date requises")
+            numeric_version(tested["version"], f"{label}.tested_by_novydeck.version")
+            if tested["version"] != plugin["version"]:
+                fail(f"{label}.tested_by_novydeck.version: doit correspondre à la version publiée")
+            if not isinstance(tested["date"], str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", tested["date"]):
+                fail(f"{label}.tested_by_novydeck.date: date ISO requise")
+            import datetime
+            try:
+                datetime.date.fromisoformat(tested["date"])
+            except ValueError:
+                fail(f"{label}.tested_by_novydeck.date: date invalide")
         if "description_fr" in plugin and not isinstance(plugin["description_fr"], str):
             fail(f"{label}.description_fr: doit être une chaîne")
         https_url(plugin["homepage"], f"{label}.homepage")
