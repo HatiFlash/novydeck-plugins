@@ -23,7 +23,7 @@ class PreviewWebSocket {
 }
 window.WebSocket = PreviewWebSocket;
 '''
-for name in ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant', 'googlehome', 'wallpaperengine'):
+for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant', 'googlehome', 'wallpaperengine')):
     html = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.html').read_text(encoding='utf-8')
     css = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.css').read_text(encoding='utf-8')
     actions = ('wallpaper', 'playlist', 'next', 'profile', 'pause') if name == 'wallpaperengine' else (None,)
@@ -37,13 +37,20 @@ for name in ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant'
                     'context': 'preview',
                     'action': (f'com.novydeck.wallpaperengine.{action}' if name == 'wallpaperengine'
                                else 'com.novydeck.googlehome.control'),
-                    'payload': {'settings': ({'scope': 'room', 'home': 'sample-home',
-                                             'target': 'sample-room', 'mode': 'toggle'}
+                    'payload': {'settings': ({'scope': 'group', 'home': 'sample-home',
+                                             'targets': ['sample-lamp', 'sample-fan'], 'mode': 'toggle'}
                                             if name == 'googlehome' else {})}}))
                 init = (FAKE_SOCKET + '\nconnectElgatoStreamDeckSocket('
                         f"0, 'preview', 'registerPropertyInspector', {info}, {action_info});")
                 if name == 'googlehome':
-                    init += "\nsetTimeout(() => ws.onmessage?.({data: JSON.stringify({context: 'preview', event: 'sendToPropertyInspector', payload: {type: 'homes', homes: [{id: 'sample-home', name: 'Demo (offline)', rooms: [{id: 'sample-room', name: 'Living room / Salon'}], devices: []}]}})}), 20);"
+                    fixture = {'context': 'preview', 'event': 'sendToPropertyInspector',
+                               'payload': {'type': 'homes', 'homes': [
+                                   {'id': 'sample-home', 'name': 'Demo (offline)',
+                                    'rooms': [{'id': 'sample-room', 'name': 'Living room / Salon'}],
+                                    'devices': [{'id': 'sample-lamp', 'name': 'Lamp / Lampe'},
+                                                {'id': 'sample-fan', 'name': 'Fan / Ventilateur'}]}]}}
+                    init += ("\nsetTimeout(() => ws.onmessage?.({data: JSON.stringify("
+                             + json.dumps(fixture) + ")}), 20);")
                 page = page.replace('</script></html>', f'</script><script>{init}</script></html>')
             elif language == 'fr':
                 page = page.replace('translate();\n</script>', "lang='fr';translate();\n</script>")

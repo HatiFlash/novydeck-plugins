@@ -110,6 +110,19 @@ fn selection<'a>(homes: &'a [Value], settings: &Value) -> Result<&'a Value, Stri
     home[collection].as_array().and_then(|items| items.iter().find(|v| v["id"] == target)).ok_or("Target not found; refresh list".into())
 }
 fn selected_devices<'a>(homes: &'a [Value], settings: &Value) -> Result<Vec<&'a Value>, String> {
+    if settings["scope"] == "group" {
+        let home_id = settings["home"].as_str().ok_or("Choose a home")?;
+        let home = homes.iter().find(|h| h["id"] == home_id).ok_or("Home not found; refresh list")?;
+        let targets = settings["targets"].as_array().ok_or("Choose group devices")?;
+        if targets.is_empty() || targets.len() > 20 { return Err("Group requires 1–20 devices".into()); }
+        let mut seen = HashSet::new();
+        let available = home["devices"].as_array().ok_or("Device list unavailable")?;
+        return targets.iter().map(|target| {
+            let id = target.as_str().filter(|s| !s.is_empty()).ok_or("Invalid group device ID")?;
+            if !seen.insert(id) { return Err("Duplicate group device ID".into()); }
+            available.iter().find(|d| d["id"] == id).ok_or_else(|| "Group device not found in home; refresh list".into())
+        }).collect();
+    }
     let target = selection(homes, settings)?;
     if settings["scope"] == "device" { return Ok(vec![target]); }
     let room_id = target["id"].as_str().filter(|id| !id.is_empty()).ok_or("Invalid room identity")?;
