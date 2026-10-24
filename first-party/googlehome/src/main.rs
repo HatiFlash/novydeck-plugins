@@ -142,7 +142,7 @@ impl Plugin for Home {
             "willDisappear" => { self.settings.remove(&ctx); },
             "didReceiveSettings" => { self.settings.insert(ctx.clone(),e.settings().clone()); },
             "propertyInspectorDidAppear" => self.status(&ctx,sdk)?,
-            "keyDown" if e.action==ACTION => { let s=self.settings.get(&ctx).cloned().unwrap_or(Value::Null); let tx=self.tx.as_ref().ok_or("Channel unavailable")?.clone(); sdk.title(&ctx,"…")?; thread::spawn(move|| { let _=tx.send(Outcome::Execute(ctx,execute(s))); }); },
+            "keyDown" if e.action==ACTION => { let s=self.settings.get(&ctx).cloned().unwrap_or(Value::Null); let tx=self.tx.as_ref().ok_or("Channel unavailable")?.clone(); sdk.title(&ctx,"…")?; let outcome_ctx=ctx.clone(); thread::spawn(move|| { let _=tx.send(Outcome::Execute(outcome_ctx,execute(s))); }); },
             "sendToPlugin" if e.action.is_empty() || e.action==ACTION => match e.payload["type"].as_str().unwrap_or("") {
                 "status" => self.status(&ctx,sdk)?,
                 "disconnect" => { match fs::remove_file(path()?) { Ok(())=>(),Err(err) if err.kind()==std::io::ErrorKind::NotFound=>(),Err(_)=>return Err("Credential deletion failed".into()) };self.status(&ctx,sdk)?; },
