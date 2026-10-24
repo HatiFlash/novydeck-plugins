@@ -1,5 +1,5 @@
 {
-  "Name":"NovyDeck System Monitor", "Description":"CPU, RAM, GPU and temperature / Moniteur système", "Author":"NovyDeck", "Version":"1.0.2", "SDKVersion":2,
+  "Name":"NovyDeck System Monitor", "Description":"CPU, RAM, GPU and temperature / Moniteur système", "Author":"NovyDeck", "Version":"1.0.3", "SDKVersion":2,
   "CodePathWin":"bin/novydeck-sysmonitor.exe", "Icon":"images/plugin-icon", "URL":"https://github.com/HatiFlash/novydeck-plugins",
   "OS":[{"Platform":"windows","MinimumVersion":"10"}], "Software":{"MinimumVersion":"6.0"},
   "Actions":[

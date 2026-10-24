@@ -2,7 +2,7 @@
   "Name": "NovyDeck Home Assistant",
   "Description": "Home Assistant entity control and state / Commande et état Home Assistant",
   "Author": "NovyDeck",
-  "Version": "1.0.2",
+  "Version": "1.0.3",
   "SDKVersion": 2,
   "CodePathWin": "bin/novydeck-homeassistant.exe",
   "Icon": "images/plugin-icon",
