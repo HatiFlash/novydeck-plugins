@@ -365,11 +365,11 @@
       "id": "com.novydeck.googlehome",
       "name": "NovyDeck Google Home (experimental)",
       "author": "NovyDeck",
-      "version": "1.0.3",
-      "description": "Control Google Home devices and rooms directly through an unofficial private API; on/off and supported brightness. Requires a Google account.",
-      "description_fr": "Expérimental : appareils et pièces Google Home via une API privée non officielle ; marche/arrêt et luminosité si disponible. Compte requis, non testé en réel.",
-      "summary": "Direct device and room control",
-      "summary_fr": "Commande directe d'appareils et pièces",
+      "version": "1.0.4",
+      "description": "Experimental Google Home private API: control one device, a room or selected devices; real-state ON/OFF toggle and supported brightness.",
+      "description_fr": "API privée expérimentale Google Home : appareil, pièce ou groupe choisi ; bascule ON/OFF selon état réel et luminosité si disponible.",
+      "summary": "Real-state ON/OFF toggle and multi-device groups",
+      "summary_fr": "Bascule ON/OFF et groupes multi-appareils",
       "category": "smart-home",
       "uuid": "com.novydeck.googlehome",
       "actions": [
@@ -388,23 +388,23 @@
       "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+; Google account and unofficial Google Home private API",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.googlehome.streamDeckPlugin",
-      "sha256": "5b1b25707b04643c27e6a1f96170ec4ae3db96eebcda52c7e647712c32b37058",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.4/com.novydeck.googlehome.streamDeckPlugin",
+      "sha256": "058be7c96dad5c56f65e521e26fa6fedbb2faca37dbd8d01f41b8d3a5ca73c4b",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.googlehome.sdPlugin/images/plugin@2x.png",
       "screenshots": [
-        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/googlehome/keys.png",
-        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/googlehome/googlehome-fr.png"
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/googlehome/googlehome-group-fr.png",
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/googlehome/googlehome-group-en.png"
       ]
     },
     {
       "id": "com.novydeck.wallpaperengine",
       "name": "NovyDeck Wallpaper Engine",
       "author": "NovyDeck",
-      "version": "1.0.3",
-      "description": "Control your installed Wallpaper Engine through its official CLI; wallpaper and playlists per screen, profiles and playback globally.",
-      "description_fr": "Contrôlez Wallpaper Engine installé via ses commandes officielles ; fonds et playlists par écran, profils et lecture globaux.",
-      "summary": "Wallpaper Engine controls",
-      "summary_fr": "Commandes Wallpaper Engine",
+      "version": "1.0.4",
+      "description": "Official Wallpaper Engine CLI controls: wallpaper and playlists per screen, profiles and local-state pause/play toggle globally.",
+      "description_fr": "Commandes officielles Wallpaper Engine : fonds et playlists par écran, profils et bascule pause/lecture globale à état local.",
+      "summary": "Wallpaper, playlist, display selection and pause/play toggle",
+      "summary_fr": "Fonds, playlists, choix écran et bascule pause/lecture",
       "category": "utilities",
       "uuid": "com.novydeck.wallpaperengine",
       "actions": [
@@ -425,8 +425,8 @@
           "name_fr": "Ouvrir profil (tous écrans)"
         },
         {
-          "name": "Pause (all screens)",
-          "name_fr": "Pause (tous écrans)"
+          "name": "Pause / Play (all screens)",
+          "name_fr": "Pause / Lecture (tous écrans)"
         },
         {
           "name": "Play (all screens)",
@@ -455,12 +455,11 @@
       "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+; separately installed and running Wallpaper Engine (Steam)",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.wallpaperengine.streamDeckPlugin",
-      "sha256": "a9512cbe726fd8b7cbe9af46298f98cddab71f711578eb393461206e8fa1c325",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.4/com.novydeck.wallpaperengine.streamDeckPlugin",
+      "sha256": "ca01022c564f22d5d081bcdeb750953e1079498c37531125881c825d115a0df9",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.wallpaperengine.sdPlugin/images/plugin@2x.png",
       "screenshots": [
-        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/keys.png",
-        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-wallpaper-fr.png",
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-pause-fr.png",
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-playlist-fr.png"
       ]
     }
