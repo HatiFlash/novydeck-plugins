@@ -5,7 +5,7 @@
       "id": "com.novydeck.clock",
       "name": "NovyDeck Clock",
       "author": "NovyDeck",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Native clock, timer and stopwatch for Stream Deck.",
       "description_fr": "Horloge, minuteur et chronomètre natifs pour Stream Deck.",
       "summary": "Clock, timer and stopwatch",
@@ -33,13 +33,11 @@
       ],
       "homepage": "https://github.com/HatiFlash/novydeck-plugins/tree/main/first-party/plugins/com.novydeck.clock.sdPlugin",
       "license": "MIT",
-      "tested_decks": [
-        "NovyDeck 0.9.0 (VM Windows 10, automated bench)"
-      ],
+      "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.2/com.novydeck.clock.streamDeckPlugin",
-      "sha256": "db406e25f9df9edbaa449a1bb556ddde51240407051f6ffb471de5b3a99c80a0",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.clock.streamDeckPlugin",
+      "sha256": "2b8a3cc2406fe106d0fdf95fc195917a78079805e2faaab61662694fb501d337",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.clock.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/clock/keys.png"
@@ -49,7 +47,7 @@
       "id": "com.novydeck.counter",
       "name": "NovyDeck Counter",
       "author": "NovyDeck",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Native counter, quick note and clipboard actions for Stream Deck.",
       "description_fr": "Compteur, note rapide et presse-papiers natifs pour Stream Deck.",
       "summary": "Counter, quick note and clipboard",
@@ -77,13 +75,11 @@
       ],
       "homepage": "https://github.com/HatiFlash/novydeck-plugins/tree/main/first-party/plugins/com.novydeck.counter.sdPlugin",
       "license": "MIT",
-      "tested_decks": [
-        "NovyDeck 0.9.0 (VM Windows 10, automated bench)"
-      ],
+      "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.2/com.novydeck.counter.streamDeckPlugin",
-      "sha256": "89dff005621211f17ec8644d6a2092c0267da39197014528defb6679880a19fb",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.counter.streamDeckPlugin",
+      "sha256": "b8cd91152047ee513e145c64006565ee8bb20adc61b94ad2b266606d68cb1bfa",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.counter.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/counter/keys.png"
@@ -93,7 +89,7 @@
       "id": "com.novydeck.sysmonitor",
       "name": "NovyDeck System Monitor",
       "author": "NovyDeck",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Native CPU, RAM and GPU engine monitor with NVIDIA GPU temperature; CPU temperature unavailable without a third-party driver.",
       "description_fr": "Moniteur natif CPU, RAM et moteurs GPU avec température GPU NVIDIA ; température CPU indisponible sans pilote tiers.",
       "summary": "CPU, RAM, GPU and temperature",
@@ -126,13 +122,11 @@
       ],
       "homepage": "https://github.com/HatiFlash/novydeck-plugins/tree/main/first-party/plugins/com.novydeck.sysmonitor.sdPlugin",
       "license": "MIT",
-      "tested_decks": [
-        "NovyDeck 0.9.0 (VM Windows 10, automated bench)"
-      ],
+      "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.2/com.novydeck.sysmonitor.streamDeckPlugin",
-      "sha256": "ba5253f0181c62f455b04467f7d4a8d1557c6dbc78f57685b3296a51edabe4f0",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.sysmonitor.streamDeckPlugin",
+      "sha256": "e56e20b6185688f1e2b69f3baeed063cc6af5b3e5e76272e31253c8c6445187c",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.sysmonitor.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/sysmonitor/keys.png"
@@ -142,7 +136,7 @@
       "id": "com.novydeck.nowplaying",
       "name": "NovyDeck Now Playing",
       "author": "NovyDeck",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Native playback controls and album artwork for Windows GSMTC-compatible media players.",
       "description_fr": "Commandes de lecture et pochette pour lecteurs multimédias compatibles GSMTC Windows.",
       "summary": "Play, skip and artwork",
@@ -170,13 +164,11 @@
       ],
       "homepage": "https://github.com/HatiFlash/novydeck-plugins/tree/main/first-party/plugins/com.novydeck.nowplaying.sdPlugin",
       "license": "MIT",
-      "tested_decks": [
-        "NovyDeck 0.9.0 (VM Windows 10, automated bench)"
-      ],
+      "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+; GSMTC-compatible player",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.2/com.novydeck.nowplaying.streamDeckPlugin",
-      "sha256": "941ea584d8200f28694b8bd0677913bde88dd4bbeec6f43d40ff718649e3df47",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.nowplaying.streamDeckPlugin",
+      "sha256": "def9cd6faab5057d4f388896e7d16077d340c425ff6e858439ffd2747009dc4f",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.nowplaying.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/nowplaying/keys.png"
@@ -186,7 +178,7 @@
       "id": "com.novydeck.oledsaver",
       "name": "NovyDeck OLED Saver",
       "author": "NovyDeck",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Cover a selected monitor with a borderless black fullscreen window; no Windows power settings changed.",
       "description_fr": "Recouvre l'écran choisi d'une fenêtre noire sans bordure ; aucun réglage d'alimentation Windows modifié.",
       "summary": "Black fullscreen overlay",
@@ -206,13 +198,11 @@
       ],
       "homepage": "https://github.com/HatiFlash/novydeck-plugins/tree/main/first-party/plugins/com.novydeck.oledsaver.sdPlugin",
       "license": "MIT",
-      "tested_decks": [
-        "NovyDeck 0.9.0 (VM Windows 10, automated bench)"
-      ],
+      "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.2/com.novydeck.oledsaver.streamDeckPlugin",
-      "sha256": "84dea6d917c6564a01747f4e56f904d62cd9690a6207566e264b61777f618325",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.oledsaver.streamDeckPlugin",
+      "sha256": "c3eb6992de844d64fb4042cc4e4a7972b91ffa4c3a0d7fe64dd3e475c2e63d00",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.oledsaver.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/oledsaver/keys.png"
@@ -222,7 +212,7 @@
       "id": "com.novydeck.homeassistant",
       "name": "NovyDeck Home Assistant",
       "author": "NovyDeck",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Control Home Assistant entities, call services and display sensor states.",
       "description_fr": "Commandez les entités Home Assistant, appelez des services et affichez les états des capteurs.",
       "summary": "Home Assistant control and states",
@@ -253,8 +243,8 @@
       "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+; Home Assistant server and long-lived access token",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.2/com.novydeck.homeassistant.streamDeckPlugin",
-      "sha256": "94016c11cde9dfbae7319ec1632f46bc99ac88de9780ac52a7e59425c36844a8",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.homeassistant.streamDeckPlugin",
+      "sha256": "ea828d3978f15eab2ef6382737eb6008c09e8bf782d57a50deec63cad45aa6ea",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.homeassistant.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/homeassistant/keys.png"
@@ -264,7 +254,7 @@
       "id": "com.novydeck.googleassistant",
       "name": "NovyDeck Google Assistant Command",
       "author": "NovyDeck",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "Send a text command to your Google Home devices via Google Assistant SDK, without Home Assistant.",
       "description_fr": "Envoie une commande écrite aux appareils Google Home via Google Assistant SDK, sans Home Assistant.",
       "summary": "Google Assistant text command",
@@ -288,8 +278,8 @@
       "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+; personal Google Cloud project with Google Assistant API (desktop OAuth)",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.2/com.novydeck.googleassistant.streamDeckPlugin",
-      "sha256": "31c66f7d733acea1d9a0cc56dba6a97a60d1dd32ef89233aaad1641232a0e566",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.googleassistant.streamDeckPlugin",
+      "sha256": "954d02935eec0cd522891e5a194a6cfa6864ad7616487b8c7b0296a9ebbee3c8",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.googleassistant.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/googleassistant/keys.png"
@@ -370,6 +360,109 @@
         "version": "1.1",
         "date": "2026-10-22"
       }
+    },
+    {
+      "id": "com.novydeck.googlehome",
+      "name": "NovyDeck Google Home (experimental)",
+      "author": "NovyDeck",
+      "version": "1.0.3",
+      "description": "Control Google Home devices and rooms directly through an unofficial private API; on/off and supported brightness. Requires a Google account.",
+      "description_fr": "Expérimental : appareils et pièces Google Home via une API privée non officielle ; marche/arrêt et luminosité si disponible. Compte requis, non testé en réel.",
+      "summary": "Direct device and room control",
+      "summary_fr": "Commande directe d'appareils et pièces",
+      "category": "smart-home",
+      "uuid": "com.novydeck.googlehome",
+      "actions": [
+        {
+          "name": "Control device or room",
+          "name_fr": "Commander un appareil ou une pièce"
+        }
+      ],
+      "tags": [
+        "google",
+        "home",
+        "smart-home"
+      ],
+      "homepage": "https://github.com/HatiFlash/novydeck-plugins/tree/main/first-party/plugins/com.novydeck.googlehome.sdPlugin",
+      "license": "MIT",
+      "tested_decks": [],
+      "min_novydeck": "0.9.0",
+      "requires": "Windows 10+; Google account and unofficial Google Home private API",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.googlehome.streamDeckPlugin",
+      "sha256": "5b1b25707b04643c27e6a1f96170ec4ae3db96eebcda52c7e647712c32b37058",
+      "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.googlehome.sdPlugin/images/plugin@2x.png",
+      "screenshots": [
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/googlehome/keys.png",
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/googlehome/googlehome-fr.png"
+      ]
+    },
+    {
+      "id": "com.novydeck.wallpaperengine",
+      "name": "NovyDeck Wallpaper Engine",
+      "author": "NovyDeck",
+      "version": "1.0.3",
+      "description": "Control your installed Wallpaper Engine through its official CLI; wallpaper and playlists per screen, profiles and playback globally.",
+      "description_fr": "Contrôlez Wallpaper Engine installé via ses commandes officielles ; fonds et playlists par écran, profils et lecture globaux.",
+      "summary": "Wallpaper Engine controls",
+      "summary_fr": "Commandes Wallpaper Engine",
+      "category": "utilities",
+      "uuid": "com.novydeck.wallpaperengine",
+      "actions": [
+        {
+          "name": "Open wallpaper",
+          "name_fr": "Ouvrir un fond"
+        },
+        {
+          "name": "Open playlist",
+          "name_fr": "Ouvrir une playlist"
+        },
+        {
+          "name": "Next wallpaper",
+          "name_fr": "Fond suivant"
+        },
+        {
+          "name": "Open profile (all screens)",
+          "name_fr": "Ouvrir profil (tous écrans)"
+        },
+        {
+          "name": "Pause (all screens)",
+          "name_fr": "Pause (tous écrans)"
+        },
+        {
+          "name": "Play (all screens)",
+          "name_fr": "Lecture (tous écrans)"
+        },
+        {
+          "name": "Stop (all screens)",
+          "name_fr": "Arrêt (tous écrans)"
+        },
+        {
+          "name": "Mute (all screens)",
+          "name_fr": "Couper le son (tous écrans)"
+        },
+        {
+          "name": "Unmute (all screens)",
+          "name_fr": "Rétablir le son (tous écrans)"
+        }
+      ],
+      "tags": [
+        "wallpaper",
+        "steam",
+        "display"
+      ],
+      "homepage": "https://github.com/HatiFlash/novydeck-plugins/tree/main/first-party/plugins/com.novydeck.wallpaperengine.sdPlugin",
+      "license": "MIT",
+      "tested_decks": [],
+      "min_novydeck": "0.9.0",
+      "requires": "Windows 10+; separately installed and running Wallpaper Engine (Steam)",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.wallpaperengine.streamDeckPlugin",
+      "sha256": "a9512cbe726fd8b7cbe9af46298f98cddab71f711578eb393461206e8fa1c325",
+      "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.wallpaperengine.sdPlugin/images/plugin@2x.png",
+      "screenshots": [
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/keys.png",
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-wallpaper-fr.png",
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-playlist-fr.png"
+      ]
     }
   ]
 }
