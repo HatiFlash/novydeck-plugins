@@ -109,18 +109,22 @@ fn selection<'a>(homes: &'a [Value], settings: &Value) -> Result<&'a Value, Stri
     let collection = match settings["scope"].as_str() { Some("device") => "devices", Some("room") => "rooms", _ => return Err("Choose device or room".into()) };
     home[collection].as_array().and_then(|items| items.iter().find(|v| v["id"] == target)).ok_or("Target not found; refresh list".into())
 }
+fn selected_devices<'a>(homes: &'a [Value], settings: &Value) -> Result<Vec<&'a Value>, String> {
+    let target = selection(homes, settings)?;
+    if settings["scope"] == "device" { return Ok(vec![target]); }
+    let room_id = target["id"].as_str().filter(|id| !id.is_empty()).ok_or("Invalid room identity")?;
+    let home = homes.iter().find(|h| h["id"] == settings["home"]).ok_or("Home not found")?;
+    let devices: Vec<_> = home["devices"].as_array().into_iter().flatten()
+        .filter(|device| device["room_id"].as_str() == Some(room_id)).collect();
+    if devices.is_empty() { return Err("No devices in this room".into()); }
+    Ok(devices)
+}
 fn execute(settings: Value) -> Result<(), String> {
     let client = http()?; let token = bearer(&client, &load()?)?;
     let homes = graph(&rpc(&client,&token,"StructuresService/GetHomeGraph",json!([]))?);
-    let target = selection(&homes,&settings)?;
+    let devices = selected_devices(&homes, &settings)?;
     let mode = settings["mode"].as_str().ok_or("Choose an action")?;
     let brightness = if mode == "brightness" { Some(settings["brightness"].as_u64().filter(|n| *n <= 100).ok_or("Brightness must be 0–100")? as u8) } else { None };
-    let home = homes.iter().find(|h| h["id"] == settings["home"]).ok_or("Home not found")?;
-    let devices: Vec<&Value> = if settings["scope"] == "room" {
-        let room_name = target["name"].as_str().ok_or("Room not found")?;
-        home["devices"].as_array().into_iter().flatten().filter(|d|d["room"] == room_name).collect()
-    } else { vec![target] };
-    if devices.is_empty() { return Err("No devices in this room".into()); }
     // Explicitly reject unsupported devices before any write; no partial room update.
     let mut commands = Vec::new();
     for d in devices { commands.push(control_payload(d,mode,brightness)?[0][0].clone()); }
@@ -165,6 +169,14 @@ impl Plugin for Home {
 }
 fn main() { let (tx,rx)=mpsc::channel(); if let Err(e)=novydeck_sdk::run(Home{tx:Some(tx),rx:Some(rx),..Home::default()}) { eprintln!("googlehome: {e}");std::process::exit(1); } }
 #[cfg(test)] mod tests { use super::*;
+    #[test] fn selection_is_scoped_by_stable_ids() {
+        let homes = vec![json!({"id":"home-a","rooms":[{"id":"r1","name":"Office"},{"id":"r2","name":"Office"},{"id":"empty","name":"Empty"}],"devices":[{"id":"d1","room_id":"r1","room":"Office"},{"id":"d2","room_id":"r2","room":"Office"},{"id":"d3","room_id":null}]}), json!({"id":"home-b","rooms":[{"id":"r1","name":"Office"}],"devices":[{"id":"other","room_id":"r1"}]})];
+        let settings = json!({"home":"home-a","scope":"room","target":"r2"});
+        let selected = selected_devices(&homes, &settings).unwrap();
+        assert_eq!(selected.len(), 1); assert_eq!(selected[0]["id"], "d2");
+        for invalid in [json!({"home":"missing","scope":"room","target":"r2"}),json!({"home":"home-a","scope":"all","target":"r2"}),json!({"home":"home-a","scope":"room","target":"Office"}),json!({"home":"home-a","scope":"room","target":"empty"})] { assert!(selected_devices(&homes,&invalid).is_err()); }
+        assert_eq!(selected_devices(&homes,&json!({"home":"home-a","scope":"device","target":"d3"})).unwrap()[0]["id"],"d3");
+    }
     #[test] fn auth_response_and_invalid_input() { assert_eq!(response("Auth=ya29.abc=x\n", "Auth","ya29").unwrap(),"ya29.abc=x"); assert!(response("Error=BadAuthentication","Auth","ya29").is_err()); assert!(connect("invalid","not-a-token").is_err()); }
     #[test] fn graph_and_commands() { let raw=json!([0,[["home","House",null,null,null,[["room-id",null,"Office",null,[[["dev",["agent","partner"]]]]], ["other-room",null,"Kitchen",null,[[["kitchen-dev",["agent","partner"]]]]], ["nameless-room",null,null,null,[[["nameless-dev",["agent","partner"]]]]]],[[["dev",["agent","partner"]],null,null,"Light",null,null,["action.devices.traits.OnOff","action.devices.traits.Brightness"]],[["kitchen-dev",["agent","partner"]],null,null,"Kettle",null,null,[]],[["unplaced",["agent","partner"]],null,null,"Unplaced",null,null,[]],[["nameless-dev",["agent","partner"]],null,null,"Unknown",null,null,[]]]]]]); let g=graph(&raw); assert_eq!(g[0]["devices"][0]["room_id"],"room-id"); assert_eq!(g[0]["devices"][0]["room"],"Office"); assert_eq!(g[0]["devices"][1]["room_id"],"other-room"); assert_eq!(g[0]["devices"][1]["room"],"Kitchen"); assert!(g[0]["devices"][2]["room_id"].is_null()); assert!(g[0]["devices"][2]["room"].is_null()); assert_eq!(g[0]["devices"][3]["room_id"],"nameless-room"); assert!(g[0]["devices"][3]["room"].is_null());let d=&g[0]["devices"][0]; assert_eq!(control_payload(d,"off",None).unwrap(),json!([[[["dev",["agent","partner"]],[["onOff",[["onOff",[null,null,null,0]]]]]]]]));assert!(control_payload(d,"brightness",None).is_err());assert!(control_payload(d,"shell",None).is_err()); }
 }

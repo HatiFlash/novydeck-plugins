@@ -6,7 +6,7 @@ Un catalogue de plugins libres pour [NovyDeck](https://github.com/HatiFlash/Novy
 
 ## Plugins NovyDeck officiels
 
-Sources et empaquetage : [first-party/](first-party/). Les sept plugins natifs sont Horloge, Compteur, Moniteur système, Lecture en cours, Économiseur OLED, Home Assistant et Commande Google Assistant. Home Assistant exige un serveur et un jeton personnels ; Google Assistant exige un projet Google Cloud personnel et OAuth bureau. Ces deux intégrations n'ont pas été testées avec un vrai serveur/compte.
+Sources et empaquetage : [first-party/](first-party/). Les neuf plugins natifs sont Horloge, Compteur, Moniteur système, Lecture en cours, Économiseur OLED, Home Assistant, Commande Google Assistant, Google Home et Wallpaper Engine. Home Assistant nécessite votre serveur et votre jeton. Commande Google Assistant envoie des phrases écrites via votre projet Google Cloud et OAuth bureau ; Google Home pilote directement appareils et pièces avec une API privée non officielle et un jeton de compte à usage unique (sans projet Cloud). Cette API peut changer sans préavis ; le jeton donne un accès étendu au compte. Wallpaper Engine nécessite une copie Steam installée et en cours d'exécution ; son exécutable propriétaire et ses fonds ne sont pas redistribués. Ces intégrations n'ont pas été vérifiées avec de vrais comptes/services ni une installation locale de Wallpaper Engine.
 
 ## Plugins communautaires
 

@@ -6,7 +6,7 @@ A directory of open-source plugins for [NovyDeck](https://github.com/HatiFlash/N
 
 ## Official NovyDeck plugins
 
-Source code and packaging: [first-party/](first-party/). The seven native plugins are Clock, Counter, System Monitor, Now Playing, OLED Saver, Home Assistant and Google Assistant Command. Home Assistant needs your own server and token; Google Assistant needs your own Google Cloud project and desktop OAuth credentials. Neither integration has been tested against a real account/server.
+Source code and packaging: [first-party/](first-party/). The nine native plugins are Clock, Counter, System Monitor, Now Playing, OLED Saver, Home Assistant, Google Assistant Command, Google Home and Wallpaper Engine. Home Assistant needs your own server and token. Google Assistant Command sends typed phrases via your own Google Cloud project and desktop OAuth; Google Home instead controls devices or rooms directly via an unofficial private API and a one-time account token (no Cloud project). That private API can change without notice; the account token grants broad access. Wallpaper Engine requires a separately installed, running Steam copy; its proprietary executable and wallpapers are not redistributed. These integrations have not been verified against real accounts/services or a local Wallpaper Engine installation.
 
 ## Community plugins
 
