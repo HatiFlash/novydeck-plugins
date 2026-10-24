@@ -291,7 +291,7 @@ fn main() { let (tx,rx)=mpsc::channel(); if let Err(e)=novydeck_sdk::run(Home{tx
         let homes=vec![json!({"id":"h1","rooms":[{"id":"r1","name":"Office"},{"id":"r2","name":"Office"}],"devices":[a,b]}),json!({"id":"h2","rooms":[{"id":"r1","name":"Office"}],"devices":[device("other","r1",true)]})];
         let choose=|targets:Value| selected_devices(&homes,&json!({"home":"h1","scope":"group","targets":targets})).map(|v|v.iter().map(|d|d["id"].clone()).collect::<Vec<_>>());
         assert_eq!(choose(json!(["b","a"])).unwrap(),vec![json!("b"),json!("a")]);
-        for targets in [json!([]),json!(["a","a"]),json!(["other"]),json!(["missing"]),json!(["a",null]),json!("a"),json!(["a";21])] { assert!(choose(targets).is_err()); }
+        for targets in [json!([]),json!(["a","a"]),json!(["other"]),json!(["missing"]),json!(["a",null]),json!("a"),json!(vec!["a";21])] { assert!(choose(targets).is_err()); }
         let many=vec![json!({"id":"h1","devices":(0..21).map(|n|device(&format!("d{n}"),"r1",true)).collect::<Vec<_>>()})];
         let ids:Vec<_>=(0..20).map(|n|format!("d{n}")).collect();
         assert_eq!(selected_devices(&many,&json!({"home":"h1","scope":"group","targets":ids})).unwrap().len(),20);
