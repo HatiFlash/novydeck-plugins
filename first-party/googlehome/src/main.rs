@@ -286,6 +286,29 @@ fn main() { let (tx,rx)=mpsc::channel(); if let Err(e)=novydeck_sdk::run(Home{tx
         assert_eq!(calls[1].1,json!([[ ["a"] ]]));
         assert_eq!(calls[2].1,json!([[control_payload(&device("a","r",true),"on",None).unwrap()[0][0].clone()]]));
     }
+    #[test] fn group_selection_rejects_invalid_lists_without_truncation() {
+        let a=device("a","r1",true); let b=device("b","r2",true);
+        let homes=vec![json!({"id":"h1","rooms":[{"id":"r1","name":"Office"},{"id":"r2","name":"Office"}],"devices":[a,b]}),json!({"id":"h2","rooms":[{"id":"r1","name":"Office"}],"devices":[device("other","r1",true)]})];
+        let choose=|targets:Value| selected_devices(&homes,&json!({"home":"h1","scope":"group","targets":targets})).map(|v|v.iter().map(|d|d["id"].clone()).collect::<Vec<_>>());
+        assert_eq!(choose(json!(["b","a"])).unwrap(),vec![json!("b"),json!("a")]);
+        for targets in [json!([]),json!(["a","a"]),json!(["other"]),json!(["missing"]),json!(["a",null]),json!("a"),json!(["a";21])] { assert!(choose(targets).is_err()); }
+        let many=vec![json!({"id":"h1","devices":(0..21).map(|n|device(&format!("d{n}"),"r1",true)).collect::<Vec<_>>()})];
+        let ids:Vec<_>=(0..20).map(|n|format!("d{n}")).collect();
+        assert_eq!(selected_devices(&many,&json!({"home":"h1","scope":"group","targets":ids})).unwrap().len(),20);
+        let ids:Vec<_>=(0..21).map(|n|format!("d{n}")).collect();
+        assert!(selected_devices(&many,&json!({"home":"h1","scope":"group","targets":ids})).is_err());
+    }
+    #[test] fn group_toggle_reads_all_before_single_write_or_none() {
+        let raw=json!([0,[["h","Home",null,null,null,[["r1",null,"Office",null,[[["a",["agent","partner"]]]]], ["r2",null,"Office",null,[[["b",["agent","partner"]]]]]],[[["a",["agent","partner"]],null,null,"Lamp",null,null,["action.devices.traits.OnOff"]],[["b",["agent","partner"]],null,null,"Fan",null,null,["action.devices.traits.OnOff"]]]]]]);
+        for (states_reply,expected) in [(states(&[("a",json!([null,null,null,1])),("b",json!([null,null,null,0]))]),true),(states(&[("a",json!([null,null,null,1]))]),false)] {
+            let mut calls=Vec::new();
+            let result=execute_with_rpc(json!({"home":"h","scope":"group","targets":["b","a"],"mode":"toggle"}),|method,body| {calls.push((method.to_string(),body));match method {"StructuresService/GetHomeGraph"=>Ok(raw.clone()),"HomeControlService/GetTraits"=>Ok(states_reply.clone()),"HomeControlService/UpdateTraits"=>Ok(json!([])),_=>panic!("unexpected RPC")}});
+            assert_eq!(result.is_ok(),expected);
+            assert_eq!(calls.iter().map(|(m,_)|m.as_str()).collect::<Vec<_>>(),if expected {vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits","HomeControlService/UpdateTraits"]} else {vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits"]});
+            assert_eq!(calls[1].1,json!([[ ["b"],["a"] ]]));
+            if expected {assert_eq!(calls[2].1.as_array().unwrap()[0].as_array().unwrap().len(),2);}
+        }
+    }
     #[test] fn auth_response_and_invalid_input() { assert_eq!(response("Auth=ya29.abc=x\n", "Auth","ya29").unwrap(),"ya29.abc=x"); assert!(response("Error=BadAuthentication","Auth","ya29").is_err()); assert!(connect("invalid","not-a-token").is_err()); }
     #[test] fn graph_and_commands() { let raw=json!([0,[["home","House",null,null,null,[["room-id",null,"Office",null,[[["dev",["agent","partner"]]]]], ["other-room",null,"Kitchen",null,[[["kitchen-dev",["agent","partner"]]]]], ["nameless-room",null,null,null,[[["nameless-dev",["agent","partner"]]]]]],[[["dev",["agent","partner"]],null,null,"Light",null,null,["action.devices.traits.OnOff","action.devices.traits.Brightness"]],[["kitchen-dev",["agent","partner"]],null,null,"Kettle",null,null,[]],[["unplaced",["agent","partner"]],null,null,"Unplaced",null,null,[]],[["nameless-dev",["agent","partner"]],null,null,"Unknown",null,null,[]]]]]]); let g=graph(&raw); assert_eq!(g[0]["devices"][0]["room_id"],"room-id"); assert_eq!(g[0]["devices"][0]["room"],"Office"); assert_eq!(g[0]["devices"][1]["room_id"],"other-room"); assert_eq!(g[0]["devices"][1]["room"],"Kitchen"); assert!(g[0]["devices"][2]["room_id"].is_null()); assert!(g[0]["devices"][2]["room"].is_null()); assert_eq!(g[0]["devices"][3]["room_id"],"nameless-room"); assert!(g[0]["devices"][3]["room"].is_null());let d=&g[0]["devices"][0]; assert_eq!(control_payload(d,"off",None).unwrap(),json!([[[["dev",["agent","partner"]],[["onOff",[["onOff",[null,null,null,0]]]]]]]]));assert!(control_payload(d,"brightness",None).is_err());assert!(control_payload(d,"shell",None).is_err()); }
 }
