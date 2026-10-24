@@ -146,8 +146,8 @@ impl Plugin for Home {
             "sendToPlugin" if e.action.is_empty() || e.action==ACTION => match e.payload["type"].as_str().unwrap_or("") {
                 "status" => self.status(&ctx,sdk)?,
                 "disconnect" => { match fs::remove_file(path()?) { Ok(())=>(),Err(err) if err.kind()==std::io::ErrorKind::NotFound=>(),Err(_)=>return Err("Credential deletion failed".into()) };self.status(&ctx,sdk)?; },
-                "connect" => { let email=e.payload["email"].as_str().ok_or("Email required")?.to_string(); let oauth=e.payload["token"].as_str().ok_or("Token required")?.to_string(); let tx=self.tx.as_ref().ok_or("Channel unavailable")?.clone(); thread::spawn(move|| { let _=tx.send(Outcome::Connect(ctx,connect(&email,&oauth))); }); },
-                "list" => { let tx=self.tx.as_ref().ok_or("Channel unavailable")?.clone(); thread::spawn(move|| { let _=tx.send(Outcome::List(ctx,list())); }); },
+                "connect" => { let email=e.payload["email"].as_str().ok_or("Email required")?.to_string(); let oauth=e.payload["token"].as_str().ok_or("Token required")?.to_string(); let tx=self.tx.as_ref().ok_or("Channel unavailable")?.clone(); let outcome_ctx=ctx.clone(); thread::spawn(move|| { let _=tx.send(Outcome::Connect(outcome_ctx,connect(&email,&oauth))); }); },
+                "list" => { let tx=self.tx.as_ref().ok_or("Channel unavailable")?.clone(); let outcome_ctx=ctx.clone(); thread::spawn(move|| { let _=tx.send(Outcome::List(outcome_ctx,list())); }); },
                 _=>(),
             }, _=>(), } Ok(()) })();
         if let Err(message)=result { sdk.inspector(&ctx,json!({"type":"message","message":message}))?;sdk.alert(&ctx)?; }
