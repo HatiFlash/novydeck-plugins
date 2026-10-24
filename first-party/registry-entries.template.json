@@ -298,7 +298,7 @@
       "id": "com.novydeck.wallpaperengine",
       "name": "NovyDeck Wallpaper Engine",
       "author": "NovyDeck",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "description": "Control your installed Wallpaper Engine through its official CLI; wallpaper and playlists per screen, profiles and playback globally.",
       "description_fr": "Contrôlez Wallpaper Engine installé via ses commandes officielles ; fonds et playlists par écran, profils et lecture globaux.",
       "summary": "Wallpaper Engine controls",

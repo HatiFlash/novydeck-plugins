@@ -4,6 +4,16 @@
 
 A directory of open-source plugins for [NovyDeck](https://github.com/HatiFlash/NovyDeck). See [CONTRIBUTING.md](CONTRIBUTING.md) to propose a plugin.
 
+## What's new in 1.0.4
+
+- **Google Home:** real-state ON/OFF toggle; select **Group (selected devices)** and use **+** / **−** to control several devices from one key. Existing single-device settings and encrypted credentials are preserved.
+- **Wallpaper Engine:** the existing Pause key now alternates Pause / Play globally. State is local to the plugin, not synchronized with external playback changes.
+- In NovyDeck, refresh the plugin store and update these two plugins. See the [setup guide and limitations](first-party/README.md).
+
+![Google Home group and toggle settings](first-party/screenshots/googlehome/googlehome-group-en.png)
+
+![Wallpaper Engine pause/play settings](first-party/screenshots/wallpaperengine/wallpaperengine-pause-en.png)
+
 ## Official NovyDeck plugins
 
 Source code and packaging: [first-party/](first-party/). The nine native plugins are Clock, Counter, System Monitor, Now Playing, OLED Saver, Home Assistant, Google Assistant Command, Google Home and Wallpaper Engine. Home Assistant needs your own server and token. Google Assistant Command sends typed phrases via your own Google Cloud project and desktop OAuth; Google Home instead controls devices or rooms directly via an unofficial private API and a one-time account token (no Cloud project). That private API can change without notice; the account token grants broad access. Wallpaper Engine requires a separately installed, running Steam copy; its proprietary executable and wallpapers are not redistributed. These integrations have not been verified against real accounts/services or a local Wallpaper Engine installation.

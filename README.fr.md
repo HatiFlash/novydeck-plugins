@@ -4,6 +4,16 @@
 
 Un catalogue de plugins libres pour [NovyDeck](https://github.com/HatiFlash/NovyDeck). Consultez [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md) pour proposer un plugin.
 
+## Nouveautés 1.0.4
+
+- **Google Home :** bascule ON/OFF selon l'état réel ; choisissez **Groupe (appareils choisis)** puis **+** / **−** pour commander plusieurs appareils depuis une touche. Les réglages existants et la connexion chiffrée sont conservés.
+- **Wallpaper Engine :** la touche Pause existante alterne Pause / Lecture sur tous les écrans. Son état est local au plugin, non synchronisé avec les changements de lecture externes.
+- Dans NovyDeck, actualisez le magasin et mettez à jour ces deux plugins. Voir le [guide de configuration et les limites](first-party/README.md).
+
+![Groupe et bascule Google Home](first-party/screenshots/googlehome/googlehome-group-fr.png)
+
+![Pause et lecture Wallpaper Engine](first-party/screenshots/wallpaperengine/wallpaperengine-pause-fr.png)
+
 ## Plugins NovyDeck officiels
 
 Sources et empaquetage : [first-party/](first-party/). Les neuf plugins natifs sont Horloge, Compteur, Moniteur système, Lecture en cours, Économiseur OLED, Home Assistant, Commande Google Assistant, Google Home et Wallpaper Engine. Home Assistant nécessite votre serveur et votre jeton. Commande Google Assistant envoie des phrases écrites via votre projet Google Cloud et OAuth bureau ; Google Home pilote directement appareils et pièces avec une API privée non officielle et un jeton de compte à usage unique (sans projet Cloud). Cette API peut changer sans préavis ; le jeton donne un accès étendu au compte. Wallpaper Engine nécessite une copie Steam installée et en cours d'exécution ; son exécutable propriétaire et ses fonds ne sont pas redistribués. Ces intégrations n'ont pas été vérifiées avec de vrais comptes/services ni une installation locale de Wallpaper Engine.
