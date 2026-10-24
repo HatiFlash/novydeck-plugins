@@ -322,6 +322,14 @@ fn main() { let (tx,rx)=mpsc::channel(); if let Err(e)=novydeck_sdk::run(Home{tx
             if expected {assert_eq!(calls[2].1.as_array().unwrap()[0].as_array().unwrap().len(),2);}
         }
     }
+    #[test] fn invalid_group_never_calls_gettraits_or_update() {
+        let raw=json!([0,[["h","Home",null,null,null,[],[[["a",["agent","partner"]],null,null,"Lamp",null,null,["action.devices.traits.OnOff"]]]], ["h2","Other",null,null,null,[],[[["b",["agent","partner"]],null,null,"Fan",null,null,["action.devices.traits.OnOff"]]]]]]);
+        for targets in [json!([]),json!(["a","a"]),json!(["a","b"]),json!(["a","missing"]),json!(vec!["a";21])] {
+            let mut calls=Vec::new();
+            assert!(execute_with_rpc(json!({"home":"h","scope":"group","targets":targets,"mode":"on"}),|method,_| {calls.push(method.to_string());if method=="StructuresService/GetHomeGraph" {Ok(raw.clone())} else {panic!("write after invalid group")}}).is_err());
+            assert_eq!(calls,vec!["StructuresService/GetHomeGraph"]);
+        }
+    }
     #[test] fn auth_response_and_invalid_input() { assert_eq!(response("Auth=ya29.abc=x\n", "Auth","ya29").unwrap(),"ya29.abc=x"); assert!(response("Error=BadAuthentication","Auth","ya29").is_err()); assert!(connect("invalid","not-a-token").is_err()); }
     #[test] fn graph_and_commands() { let raw=json!([0,[["home","House",null,null,null,[["room-id",null,"Office",null,[[["dev",["agent","partner"]]]]], ["other-room",null,"Kitchen",null,[[["kitchen-dev",["agent","partner"]]]]], ["nameless-room",null,null,null,[[["nameless-dev",["agent","partner"]]]]]],[[["dev",["agent","partner"]],null,null,"Light",null,null,["action.devices.traits.OnOff","action.devices.traits.Brightness"]],[["kitchen-dev",["agent","partner"]],null,null,"Kettle",null,null,[]],[["unplaced",["agent","partner"]],null,null,"Unplaced",null,null,[]],[["nameless-dev",["agent","partner"]],null,null,"Unknown",null,null,[]]]]]]); let g=graph(&raw); assert_eq!(g[0]["devices"][0]["room_id"],"room-id"); assert_eq!(g[0]["devices"][0]["room"],"Office"); assert_eq!(g[0]["devices"][1]["room_id"],"other-room"); assert_eq!(g[0]["devices"][1]["room"],"Kitchen"); assert!(g[0]["devices"][2]["room_id"].is_null()); assert!(g[0]["devices"][2]["room"].is_null()); assert_eq!(g[0]["devices"][3]["room_id"],"nameless-room"); assert!(g[0]["devices"][3]["room"].is_null());let d=&g[0]["devices"][0]; assert_eq!(control_payload(d,"off",None).unwrap(),json!([[[["dev",["agent","partner"]],[["onOff",[["onOff",[null,null,null,0]]]]]]]]));assert!(control_payload(d,"brightness",None).is_err());assert!(control_payload(d,"shell",None).is_err()); }
 }
