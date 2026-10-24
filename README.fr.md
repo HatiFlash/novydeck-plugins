@@ -10,7 +10,7 @@ Sources et empaquetage : [first-party/](first-party/). Les neuf plugins natifs s
 
 ## Plugins communautaires
 
-Le catalogue est en préparation ; seules les archives officielles aux empreintes vérifiées seront publiées.
+Le catalogue référence les archives officielles et leurs empreintes vérifiées. Consultez le [guide 1.0.3 et les aperçus bilingues des réglages](first-party/README.md#new-in-103--nouveautés-103) pour Google Home, Google Assistant et Wallpaper Engine. Google Home est expérimental ; aucun compte Google ni installation réelle de Wallpaper Engine n'a été qualifié.
 
 Chaque fiche inclut page et release officielles HTTPS, SHA-256, licence libre, version exacte, decks testés (liste vide si non testés) et `min_novydeck` obligatoire. Champs facultatifs : `description_fr`, `uuid`, `category` (`system`, `audio`, `streaming`, `productivity`, `smart-home`, `communication`, `gaming`, `utilities`), `summary`/`summary_fr` (140 caractères maximum), `icon` HTTPS PNG carré (256 Kio maximum), six `screenshots` HTTPS PNG/JPEG maximum (2 Mio et 4096 pixels par côté), 100 `actions` maximum (`name`, `name_fr` facultatif, 120 octets UTF-8), huit `tags` maximum (40 caractères) et `requires` (une chaîne de 200 caractères maximum). Voir l'[exemple](scripts/example-entry.json).
 

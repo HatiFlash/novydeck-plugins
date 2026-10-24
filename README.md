@@ -10,7 +10,7 @@ Source code and packaging: [first-party/](first-party/). The nine native plugins
 
 ## Community plugins
 
-The registry is being prepared; only entries with verified release archives and checksums will be published.
+The registry lists official release archives with verified checksums. See the [1.0.3 setup guide and bilingual inspector previews](first-party/README.md#new-in-103--nouveautés-103) for Google Home, Google Assistant and Wallpaper Engine. Google Home is experimental; no real Google account or Wallpaper Engine installation has been qualified.
 
 An entry includes an HTTPS homepage and official release archive, SHA-256, free/open-source license, exact version, tested decks (empty if untested), and required `min_novydeck`. Optional metadata: `description_fr`, `uuid`, `category` (`system`, `audio`, `streaming`, `productivity`, `smart-home`, `communication`, `gaming`, `utilities`), `summary`/`summary_fr` (at most 140 characters), HTTPS PNG square `icon` (at most 256 KiB), up to six HTTPS PNG/JPEG `screenshots` (each at most 2 MiB and 4096 px per side), up to 100 `actions` (`name` and optional `name_fr`, up to 120 UTF-8 bytes), up to eight `tags` (at most 40 characters), and `requires` (one string, at most 200 characters). See [example entry](scripts/example-entry.json).
 
