@@ -1,7 +1,7 @@
 //! Adapted from piekstra/google-home-cli (MIT), commit 1370939af0bd3c1b85bd68701832833a8b7a045e:
 //! gpsoauth exchange/auth forms, Foyer JSON gateway, GetHomeGraph and UpdateTraits layouts.
 //! Restricted to listed Foyer RPCs; no user-supplied URL, method or shell command.
-use std::{collections::HashMap, fs, path::PathBuf, sync::mpsc::{self, Receiver, Sender}, thread, time::Duration};
+use std::{collections::{HashMap, HashSet}, fs, path::PathBuf, sync::{atomic::{AtomicBool, Ordering}, mpsc::{self, Receiver, Sender}}, thread, time::Duration};
 use novydeck_sdk::{Client, Event, Plugin};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -119,22 +119,75 @@ fn selected_devices<'a>(homes: &'a [Value], settings: &Value) -> Result<Vec<&'a 
     if devices.is_empty() { return Err("No devices in this room".into()); }
     Ok(devices)
 }
-fn execute(settings: Value) -> Result<(), String> {
-    let client = http()?; let token = bearer(&client, &load()?)?;
-    let homes = graph(&rpc(&client,&token,"StructuresService/GetHomeGraph",json!([]))?);
+// Adapted from piekstra/google-home-cli src/traits.rs (MIT), commit 1370939af0bd3c1b85bd68701832833a8b7a045e.
+// GetTraits request: [[id], ...] wrapped in one array; response entries: [[id], [[trait, [[field, wrapper]]]]].
+fn toggle_commands(devices: &[&Value], raw: &Value) -> Result<Vec<Value>, String> {
+    if devices.is_empty() { return Err("No devices to toggle".into()); }
+    let mut ids = HashSet::new();
+    for d in devices {
+        control_payload(d,"on",None)?;
+        let id = d["id"].as_str().ok_or("Invalid device identity")?;
+        if !ids.insert(id) { return Err("Duplicate device identity".into()); }
+    }
+    let entries = raw.get(0).and_then(Value::as_array).ok_or("Invalid GetTraits response")?;
+    let mut observed = HashMap::new();
+    for entry in entries {
+        let id = entry.get(0).and_then(|v| v.get(0)).and_then(Value::as_str).ok_or("Invalid GetTraits device")?;
+        if !ids.contains(id) { continue; }
+        if observed.contains_key(id) { return Err("Duplicate GetTraits device".into()); }
+        let traits = entry.get(1).and_then(Value::as_array).ok_or("Missing GetTraits traits")?;
+        let mut on = None;
+        for trait_entry in traits {
+            if trait_entry.get(0).and_then(Value::as_str) != Some("onOff") { continue; }
+            if on.is_some() { return Err("Duplicate onOff trait".into()); }
+            let fields = trait_entry.get(1).and_then(Value::as_array).ok_or("Invalid onOff trait")?;
+            for field in fields {
+                if field.get(0).and_then(Value::as_str) != Some("onOff") { continue; }
+                if on.is_some() { return Err("Duplicate onOff state".into()); }
+                let wrapper = field.get(1).and_then(Value::as_array).ok_or("Unknown onOff state")?;
+                on = Some(match wrapper.get(3) { Some(Value::Bool(b)) => *b, Some(Value::Number(n)) if n.as_i64()==Some(0) => false, Some(Value::Number(n)) if n.as_i64()==Some(1) => true, _ => return Err("Unknown onOff state".into()) });
+            }
+        }
+        observed.insert(id, on.ok_or("Missing onOff state")?);
+    }
+    if observed.len()!=devices.len() { return Err("Missing GetTraits device state".into()); }
+    let mode = if observed.values().all(|&on| on) { "off" } else { "on" };
+    devices.iter().map(|d| Ok(control_payload(d,mode,None)?[0][0].clone())).collect()
+}
+fn execute_with_rpc(settings: Value, mut call: impl FnMut(&str, Value) -> Result<Value,String>) -> Result<(),String> {
+    let homes = graph(&call("StructuresService/GetHomeGraph",json!([]))?);
     let devices = selected_devices(&homes, &settings)?;
     let mode = settings["mode"].as_str().ok_or("Choose an action")?;
     let brightness = if mode == "brightness" { Some(settings["brightness"].as_u64().filter(|n| *n <= 100).ok_or("Brightness must be 0–100")? as u8) } else { None };
-    // Explicitly reject unsupported devices before any write; no partial room update.
-    let mut commands = Vec::new();
-    for d in devices { commands.push(control_payload(d,mode,brightness)?[0][0].clone()); }
-    rpc(&client,&token,"HomeControlService/UpdateTraits",json!([commands]))?;
+    let commands = if mode == "toggle" {
+        // Validate every selected device before fetching states; never write on failed reads.
+        for d in &devices { control_payload(d,"on",None)?; }
+        let ids: Vec<Value> = devices.iter().map(|d| json!([d["id"]])).collect();
+        let raw = call("HomeControlService/GetTraits",json!([ids]))?;
+        toggle_commands(&devices,&raw)?
+    } else {
+        devices.iter().map(|d| Ok(control_payload(d,mode,brightness)?[0][0].clone())).collect::<Result<Vec<_>,String>>()?
+    };
+    call("HomeControlService/UpdateTraits",json!([commands]))?;
     Ok(())
+}
+fn execute(settings: Value) -> Result<(), String> {
+    let client = http()?; let token = bearer(&client, &load()?)?;
+    execute_with_rpc(settings, |method,body| rpc(&client,&token,method,body))
 }
 fn list() -> Result<Value, String> {
     let client = http()?; let token = bearer(&client,&load()?)?;
     Ok(json!(graph(&rpc(&client,&token,"StructuresService/GetHomeGraph",json!([]))?)))
 }
+static EXECUTING: AtomicBool = AtomicBool::new(false);
+struct BusyGuard<'a>(&'a AtomicBool);
+impl<'a> BusyGuard<'a> {
+    fn acquire(flag: &'a AtomicBool) -> Result<Self,String> {
+        flag.compare_exchange(false,true,Ordering::AcqRel,Ordering::Acquire)
+            .map(|_|Self(flag)).map_err(|_|"Google Home command already in progress".into())
+    }
+}
+impl Drop for BusyGuard<'_> { fn drop(&mut self) { self.0.store(false,Ordering::Release); } }
 enum Outcome { Connect(String,Result<(),String>), List(String,Result<Value,String>), Execute(String,Result<(),String>) }
 #[derive(Default)] struct Home { settings: HashMap<String,Value>, tx: Option<Sender<Outcome>>, rx: Option<Receiver<Outcome>> }
 impl Home {
@@ -148,7 +201,7 @@ impl Plugin for Home {
             "willDisappear" => { self.settings.remove(&ctx); },
             "didReceiveSettings" => { self.settings.insert(ctx.clone(),e.settings().clone()); },
             "propertyInspectorDidAppear" => self.status(&ctx,sdk)?,
-            "keyDown" if e.action==ACTION => { let s=self.settings.get(&ctx).cloned().unwrap_or(Value::Null); let tx=self.tx.as_ref().ok_or("Channel unavailable")?.clone(); sdk.title(&ctx,"…")?; let outcome_ctx=ctx.clone(); thread::spawn(move|| { let _=tx.send(Outcome::Execute(outcome_ctx,execute(s))); }); },
+            "keyDown" if e.action==ACTION => { let busy=BusyGuard::acquire(&EXECUTING)?; let s=self.settings.get(&ctx).cloned().unwrap_or(Value::Null); let tx=self.tx.as_ref().ok_or("Channel unavailable")?.clone(); sdk.title(&ctx,"…")?; let outcome_ctx=ctx.clone(); thread::spawn(move|| { let result=execute(s); let _=tx.send(Outcome::Execute(outcome_ctx,result)); drop(busy); }); },
             "sendToPlugin" if e.action.is_empty() || e.action==ACTION => match e.payload["type"].as_str().unwrap_or("") {
                 "status" => self.status(&ctx,sdk)?,
                 "disconnect" => { match fs::remove_file(path()?) { Ok(())=>(),Err(err) if err.kind()==std::io::ErrorKind::NotFound=>(),Err(_)=>return Err("Credential deletion failed".into()) };self.status(&ctx,sdk)?; },
@@ -179,7 +232,48 @@ fn main() { let (tx,rx)=mpsc::channel(); if let Err(e)=novydeck_sdk::run(Home{tx
     }
     #[test] fn toggle_accepts_onoff_device() {
         let device = json!({"id":"lamp","agent":"agent","partner":"partner","traits":["action.devices.traits.OnOff"]});
-        assert!(control_payload(&device,"toggle",None).is_ok(), "toggle must control an OnOff device");
+        assert!(toggle_commands(&[&device],&states(&[("lamp",json!([null,null,null,0]))])).is_ok(), "toggle must control an OnOff device");
+    }
+    fn device(id: &str, room: &str, supported: bool) -> Value { json!({"id":id,"agent":"agent","partner":"partner","room_id":room,"traits":if supported {vec!["action.devices.traits.OnOff"]} else {vec![]}}) }
+    fn states(values: &[(&str, Value)]) -> Value { json!([values.iter().map(|(id, value)| json!([[id],[["onOff",[["onOff",value]]]]])).collect::<Vec<_>>()]) }
+    #[test] fn toggle_reads_real_boolean_and_inverts() {
+        let d=device("lamp","r1",true);
+        assert_eq!(toggle_commands(&[&d], &states(&[("lamp",json!([null,null,null,1]))])).unwrap(), vec![control_payload(&d,"off",None).unwrap()[0][0].clone()]);
+        assert_eq!(toggle_commands(&[&d], &states(&[("lamp",json!([null,null,null,0]))])).unwrap(), vec![control_payload(&d,"on",None).unwrap()[0][0].clone()]);
+    }
+    #[test] fn room_toggle_all_on_turns_all_off_otherwise_all_on() {
+        let a=device("a","same",true); let b=device("b","same",true);
+        let both=[&a,&b];
+        for (raw,mode) in [(states(&[("a",json!([null,null,null,1])),("b",json!([null,null,null,1]))]),"off"),(states(&[("a",json!([null,null,null,1])),("b",json!([null,null,null,0]))]),"on")] {
+            assert_eq!(toggle_commands(&both,&raw).unwrap(),both.iter().map(|d|control_payload(d,mode,None).unwrap()[0][0].clone()).collect::<Vec<_>>());
+        }
+    }
+    #[test] fn toggle_missing_invalid_or_unsupported_state_refuses_every_write() {
+        let a=device("a","r",true);let b=device("b","r",true);let unsupported=device("u","r",false);
+        for raw in [states(&[("a",json!([null,null,null,1]))]),states(&[("a",json!([null,null,null,1])),("b",json!([null,null,null,2]))]),json!([[[["a"],[["brightness",[["brightness",[null,50]]]]]],[["b"],[["onOff",[["onOff",[null,null,null,1]]]]]]]])] {
+            assert!(toggle_commands(&[&a,&b],&raw).is_err());
+        }
+        assert!(toggle_commands(&[&a,&unsupported],&states(&[("a",json!([null,null,null,1])),("u",json!([null,null,null,1]))])).is_err());
+    }
+    #[test] fn toggle_uses_only_ids_in_selected_room_even_with_homonyms() {
+        let homes=vec![json!({"id":"h1","rooms":[{"id":"r1","name":"Office"},{"id":"r2","name":"Office"}],"devices":[device("a","r1",true),device("b","r2",true)]}),json!({"id":"h2","rooms":[{"id":"r1","name":"Office"}],"devices":[device("c","r1",true)]})];
+        let chosen=selected_devices(&homes,&json!({"home":"h1","scope":"room","target":"r1"})).unwrap();
+        assert_eq!(chosen.len(),1);assert_eq!(chosen[0]["id"],"a");
+        assert_eq!(toggle_commands(&chosen,&states(&[("a",json!([null,null,null,0]))])).unwrap().len(),1);
+    }
+    #[test] fn simultaneous_press_cannot_start_two_reads() {
+        let busy=AtomicBool::new(false);
+        let first=BusyGuard::acquire(&busy).unwrap();
+        assert!(BusyGuard::acquire(&busy).is_err());
+        drop(first);
+        assert!(BusyGuard::acquire(&busy).is_ok());
+    }
+    #[test] fn failed_gettraits_never_sends_update() {
+        let raw=json!([0,[["h","Home",null,null,null,[["r",null,"Room",null,[[["a",["agent","partner"]]]]]],[[["a",["agent","partner"]],null,null,"Lamp",null,null,["action.devices.traits.OnOff"]]]]]]);
+        let mut calls=Vec::new();
+        let result=execute_with_rpc(json!({"home":"h","scope":"room","target":"r","mode":"toggle"}), |method,body| { calls.push((method.to_string(),body)); match method {"StructuresService/GetHomeGraph"=>Ok(raw.clone()),"HomeControlService/GetTraits"=>Err("Google Home HTTP 503".into()),_=>panic!("unexpected write") } });
+        assert!(result.is_err());assert_eq!(calls.iter().map(|(m,_)|m.as_str()).collect::<Vec<_>>(),vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits"]);
+        assert_eq!(calls[1].1,json!([[ ["a"] ]]));
     }
     #[test] fn auth_response_and_invalid_input() { assert_eq!(response("Auth=ya29.abc=x\n", "Auth","ya29").unwrap(),"ya29.abc=x"); assert!(response("Error=BadAuthentication","Auth","ya29").is_err()); assert!(connect("invalid","not-a-token").is_err()); }
     #[test] fn graph_and_commands() { let raw=json!([0,[["home","House",null,null,null,[["room-id",null,"Office",null,[[["dev",["agent","partner"]]]]], ["other-room",null,"Kitchen",null,[[["kitchen-dev",["agent","partner"]]]]], ["nameless-room",null,null,null,[[["nameless-dev",["agent","partner"]]]]]],[[["dev",["agent","partner"]],null,null,"Light",null,null,["action.devices.traits.OnOff","action.devices.traits.Brightness"]],[["kitchen-dev",["agent","partner"]],null,null,"Kettle",null,null,[]],[["unplaced",["agent","partner"]],null,null,"Unplaced",null,null,[]],[["nameless-dev",["agent","partner"]],null,null,"Unknown",null,null,[]]]]]]); let g=graph(&raw); assert_eq!(g[0]["devices"][0]["room_id"],"room-id"); assert_eq!(g[0]["devices"][0]["room"],"Office"); assert_eq!(g[0]["devices"][1]["room_id"],"other-room"); assert_eq!(g[0]["devices"][1]["room"],"Kitchen"); assert!(g[0]["devices"][2]["room_id"].is_null()); assert!(g[0]["devices"][2]["room"].is_null()); assert_eq!(g[0]["devices"][3]["room_id"],"nameless-room"); assert!(g[0]["devices"][3]["room"].is_null());let d=&g[0]["devices"][0]; assert_eq!(control_payload(d,"off",None).unwrap(),json!([[[["dev",["agent","partner"]],[["onOff",[["onOff",[null,null,null,0]]]]]]]]));assert!(control_payload(d,"brightness",None).is_err());assert!(control_payload(d,"shell",None).is_err()); }

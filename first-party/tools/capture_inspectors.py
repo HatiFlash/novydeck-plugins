@@ -31,13 +31,19 @@ for name in ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant'
         for action in actions:
             # Self-contained page: packaged CSS and genuine inspector initialization.
             page = html.replace('<link rel="stylesheet" href="inspector.css">', f'<style>{css}</style>')
-            if name == 'wallpaperengine':
+            if name in ('wallpaperengine', 'googlehome'):
                 info = json.dumps(json.dumps({'application': {'language': language}}))
                 action_info = json.dumps(json.dumps({
-                    'context': 'preview', 'action': f'com.novydeck.wallpaperengine.{action}',
-                    'payload': {'settings': {}}}))
+                    'context': 'preview',
+                    'action': (f'com.novydeck.wallpaperengine.{action}' if name == 'wallpaperengine'
+                               else 'com.novydeck.googlehome.control'),
+                    'payload': {'settings': ({'scope': 'room', 'home': 'sample-home',
+                                             'target': 'sample-room', 'mode': 'toggle'}
+                                            if name == 'googlehome' else {})}}))
                 init = (FAKE_SOCKET + '\nconnectElgatoStreamDeckSocket('
                         f"0, 'preview', 'registerPropertyInspector', {info}, {action_info});")
+                if name == 'googlehome':
+                    init += "\nsetTimeout(() => ws.onmessage?.({data: JSON.stringify({context: 'preview', event: 'sendToPropertyInspector', payload: {type: 'homes', homes: [{id: 'sample-home', name: 'Demo (offline)', rooms: [{id: 'sample-room', name: 'Living room / Salon'}], devices: []}]}})}), 20);"
                 page = page.replace('</script></html>', f'</script><script>{init}</script></html>')
             elif language == 'fr':
                 page = page.replace('translate();\n</script>', "lang='fr';translate();\n</script>")

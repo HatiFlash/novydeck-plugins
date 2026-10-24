@@ -275,7 +275,7 @@
       "id": "com.novydeck.googlehome",
       "name": "NovyDeck Google Home",
       "author": "NovyDeck",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "description": "Control Google Home devices and rooms directly through an unofficial private API; on/off and supported brightness. Requires a Google account.",
       "description_fr": "Commandez directement appareils et pièces Google Home via une API privée non officielle ; marche/arrêt et luminosité si disponible. Compte Google requis.",
       "summary": "Direct device and room control",
