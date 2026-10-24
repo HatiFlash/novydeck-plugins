@@ -54,7 +54,7 @@ for name in ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant'
             screenshot = output / f'{suffix}.png'
             try:
                 subprocess.run([str(edge), '--headless=new', '--disable-gpu', '--hide-scrollbars',
-                                '--no-first-run', '--window-size=520,1000', f'--screenshot={screenshot}',
+                                '--no-first-run', f'--window-size=520,{1400 if name == "googlehome" else 1000}', f'--screenshot={screenshot}',
                                 target.as_uri()], check=True, timeout=45)
                 if not screenshot.is_file():
                     raise RuntimeError(f'Missing screenshot: {screenshot}')
