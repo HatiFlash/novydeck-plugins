@@ -2,9 +2,9 @@
   "plugins": [
     {
       "id": "com.novydeck.clock",
-      "version": "1.0.2",
-      "sha256": "db406e25f9df9edbaa449a1bb556ddde51240407051f6ffb471de5b3a99c80a0",
-      "date": "2026-10-23T13:00:00.456112+00:00",
+      "version": "1.0.3",
+      "sha256": "2b8a3cc2406fe106d0fdf95fc195917a78079805e2faaab61662694fb501d337",
+      "date": "2026-10-24T20:40:14.981489+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -16,14 +16,14 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 1014573,
+      "archive_bytes": 1014566,
       "unpacked_bytes": 1987222
     },
     {
       "id": "com.novydeck.counter",
-      "version": "1.0.2",
-      "sha256": "89dff005621211f17ec8644d6a2092c0267da39197014528defb6679880a19fb",
-      "date": "2026-10-23T13:00:03.207575+00:00",
+      "version": "1.0.3",
+      "sha256": "b8cd91152047ee513e145c64006565ee8bb20adc61b94ad2b266606d68cb1bfa",
+      "date": "2026-10-24T20:40:16.832448+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -35,14 +35,14 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 975450,
+      "archive_bytes": 975372,
       "unpacked_bytes": 1943102
     },
     {
       "id": "com.novydeck.sysmonitor",
-      "version": "1.0.2",
-      "sha256": "ba5253f0181c62f455b04467f7d4a8d1557c6dbc78f57685b3296a51edabe4f0",
-      "date": "2026-10-23T13:00:04.348924+00:00",
+      "version": "1.0.3",
+      "sha256": "e56e20b6185688f1e2b69f3baeed063cc6af5b3e5e76272e31253c8c6445187c",
+      "date": "2026-10-24T20:40:18.027893+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -54,14 +54,14 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 1097360,
+      "archive_bytes": 1097364,
       "unpacked_bytes": 2210992
     },
     {
       "id": "com.novydeck.nowplaying",
-      "version": "1.0.2",
-      "sha256": "941ea584d8200f28694b8bd0677913bde88dd4bbeec6f43d40ff718649e3df47",
-      "date": "2026-10-23T13:00:05.345711+00:00",
+      "version": "1.0.3",
+      "sha256": "def9cd6faab5057d4f388896e7d16077d340c425ff6e858439ffd2747009dc4f",
+      "date": "2026-10-24T20:40:19.199980+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -73,14 +73,14 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 1324218,
+      "archive_bytes": 1324260,
       "unpacked_bytes": 2742683
     },
     {
       "id": "com.novydeck.oledsaver",
-      "version": "1.0.2",
-      "sha256": "84dea6d917c6564a01747f4e56f904d62cd9690a6207566e264b61777f618325",
-      "date": "2026-10-23T13:00:06.402640+00:00",
+      "version": "1.0.3",
+      "sha256": "c3eb6992de844d64fb4042cc4e4a7972b91ffa4c3a0d7fe64dd3e475c2e63d00",
+      "date": "2026-10-24T20:40:20.425089+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -92,14 +92,14 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 967300,
+      "archive_bytes": 967293,
       "unpacked_bytes": 1960022
     },
     {
       "id": "com.novydeck.homeassistant",
-      "version": "1.0.2",
-      "sha256": "94016c11cde9dfbae7319ec1632f46bc99ac88de9780ac52a7e59425c36844a8",
-      "date": "2026-10-23T13:00:07.412407+00:00",
+      "version": "1.0.3",
+      "sha256": "ea828d3978f15eab2ef6382737eb6008c09e8bf782d57a50deec63cad45aa6ea",
+      "date": "2026-10-24T20:40:21.615144+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -111,14 +111,14 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 2702665,
-      "unpacked_bytes": 6060714
+      "archive_bytes": 2702909,
+      "unpacked_bytes": 6059178
     },
     {
       "id": "com.novydeck.googleassistant",
-      "version": "1.0.2",
-      "sha256": "31c66f7d733acea1d9a0cc56dba6a97a60d1dd32ef89233aaad1641232a0e566",
-      "date": "2026-10-23T13:00:08.614485+00:00",
+      "version": "1.0.3",
+      "sha256": "954d02935eec0cd522891e5a194a6cfa6864ad7616487b8c7b0296a9ebbee3c8",
+      "date": "2026-10-24T20:40:22.987304+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -130,14 +130,14 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 2418171,
-      "unpacked_bytes": 5735413
+      "archive_bytes": 2422175,
+      "unpacked_bytes": 5743935
     },
     {
       "id": "com.elgato.cpu",
       "version": "1.2",
       "sha256": "582c03fa2c5118e4a083c5b32d411cede07383668d8f4be4c9f131a13a417276",
-      "date": "2026-10-23T13:00:09.752214+00:00",
+      "date": "2026-10-24T20:40:24.330970+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -162,7 +162,7 @@
       "id": "com.barraider.stopwatch",
       "version": "1.1",
       "sha256": "f7551a2b535c1956849c491369b1d85f4b9891edcd1ce759fbcc6fdc24c5f1dc",
-      "date": "2026-10-23T13:00:10.684553+00:00",
+      "date": "2026-10-24T20:40:25.458575+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -220,6 +220,44 @@
       ],
       "archive_bytes": 1045435,
       "unpacked_bytes": 4522198
+    },
+    {
+      "id": "com.novydeck.googlehome",
+      "version": "1.0.3",
+      "sha256": "5b1b25707b04643c27e6a1f96170ec4ae3db96eebcda52c7e647712c32b37058",
+      "date": "2026-10-24T20:40:29.694413+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.googlehome.sdPlugin/bin/novydeck-googlehome.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 2075226,
+      "unpacked_bytes": 4864148
+    },
+    {
+      "id": "com.novydeck.wallpaperengine",
+      "version": "1.0.3",
+      "sha256": "a9512cbe726fd8b7cbe9af46298f98cddab71f711578eb393461206e8fa1c325",
+      "date": "2026-10-24T20:40:30.980432+00:00",
+      "defender": "clean",
+      "findings": [
+        {
+          "severity": "info",
+          "rule": "native_binary",
+          "file": "com.novydeck.wallpaperengine.sdPlugin/bin/novydeck-wallpaperengine.exe",
+          "detail": "Executable/DLL present; Authenticode: NotSigned|"
+        }
+      ],
+      "verdict": "passed",
+      "urls": [],
+      "archive_bytes": 489157,
+      "unpacked_bytes": 885907
     }
   ]
 }
