@@ -1,0 +1,70 @@
+use std::{collections::HashMap, path::{Path,PathBuf},process::Command};
+use novydeck_sdk::{Client,Event,Plugin};
+use serde_json::{json,Value};
+const PREFIX:&str="com.novydeck.wallpaperengine.";
+fn executable(settings:&Value)->Result<PathBuf,String> {
+    if let Some(raw)=settings["executable"].as_str().filter(|s|!s.trim().is_empty()) {
+        let p=PathBuf::from(raw); if !p.is_file() || !valid_exe(&p) {return Err("Choose wallpaper32.exe or wallpaper64.exe".into());}return Ok(p);
+    }
+    for root in [std::env::var_os("PROGRAMFILES(X86)"),std::env::var_os("PROGRAMFILES"),std::env::var_os("STEAM_PATH")] {
+        if let Some(root)=root { for base in [PathBuf::from(&root).join("Steam/steamapps/common/wallpaper_engine"),PathBuf::from(&root).join("steamapps/common/wallpaper_engine")] {
+            for name in ["wallpaper64.exe","wallpaper32.exe"] {let p=base.join(name); if p.is_file(){return Ok(p);} }
+        } }
+    }
+    Err("Wallpaper Engine executable not found; choose its installed EXE".into())
+}
+fn valid_exe(p:&Path)->bool { p.file_name().and_then(|s|s.to_str()).is_some_and(|s|s.eq_ignore_ascii_case("wallpaper64.exe")||s.eq_ignore_ascii_case("wallpaper32.exe")) }
+fn required(value:&Value,key:&str)->Result<String,String> {
+    let s=value[key].as_str().unwrap_or("").trim();
+    if s.is_empty()||s.len()>2048||s.contains(['\n','\r','\0']) {return Err(format!("Invalid {key}"));}
+    Ok(s.into())
+}
+fn target(s:&Value)->Result<Vec<String>,String> {
+    match s["target"].as_str().ok_or("Choose a screen (or internal location)")? {
+        "monitor" => {let index=s["monitor"].as_u64().filter(|v|*v<32).ok_or("Screen must be 1–32")?;Ok(vec!["-monitor".into(),index.to_string()])},
+        "location" => Ok(vec!["-location".into(),required(s,"location")?]),
+        _ => Err("Choose a screen (or internal location)".into())
+    }
+}
+fn arguments(action:&str,s:&Value)->Result<Vec<String>,String> {
+    let mut args=vec!["-control".into()];
+    match action {
+        "wallpaper" => {let p=PathBuf::from(required(s,"file")?);if !p.is_file(){return Err("Wallpaper file not found".into());}args.extend(["openWallpaper".into(),"-file".into(),p.to_string_lossy().into_owned()]);args.extend(target(s)?);},
+        "playlist" => {args.extend(["openPlaylist".into(),"-playlist".into(),required(s,"playlist")?]);args.extend(target(s)?);},
+        "next" => {args.push("nextWallpaper".into());args.extend(target(s)?);},
+        "profile" => args.extend(["openProfile".into(),"-profile".into(),required(s,"profile")?]),
+        "pause"|"play"|"stop"|"mute"|"unmute" => args.push(action.into()),
+        _=>return Err("Unknown action".into()),
+    }
+    Ok(args)
+}
+fn run(action:&str,s:&Value)->Result<(),String> {
+    let args=arguments(action,s)?;
+    let exe=executable(s)?;
+    // Command passes each argument separately: spaces and punctuation cannot inject shell commands.
+    let status=Command::new(exe).args(args).status().map_err(|_|"Wallpaper Engine failed to start")?;
+    if status.success(){Ok(())}else{Err(format!("Wallpaper Engine exit: {status}"))}
+}
+#[derive(Default)] struct Wallpaper{states:HashMap<String,Value>}
+impl Plugin for Wallpaper {
+    fn event(&mut self,e:Event,sdk:&mut Client)->Result<(),String>{
+        let ctx=e.context.clone();
+        match e.name.as_str(){
+            "willAppear"=>{self.states.insert(ctx.clone(),e.settings().clone());sdk.title(&ctx,"Wallpaper")?;},
+            "willDisappear"=>{self.states.remove(&ctx);},
+            "didReceiveSettings"=>{self.states.insert(ctx.clone(),e.settings().clone());},
+            "keyDown" if e.action.starts_with(PREFIX)=>{
+                let action=e.action.strip_prefix(PREFIX).unwrap_or("");
+                let settings=self.states.get(&ctx).cloned().unwrap_or(Value::Null);
+                match run(action,&settings){Ok(())=>sdk.ok(&ctx)?,Err(message)=>{sdk.inspector(&ctx,json!({"type":"message","message":message}))?;sdk.alert(&ctx)?;}}
+            },_=>(),
+        }Ok(())
+    }
+    fn tick(&mut self,_:&mut Client)->Result<(),String>{Ok(())}
+}
+fn main(){if let Err(e)=novydeck_sdk::run(Wallpaper::default()){eprintln!("wallpaperengine: {e}");std::process::exit(1);}}
+#[cfg(test)] mod tests{use super::*;
+    #[test] fn official_argument_shapes(){let s=json!({"target":"monitor","monitor":0,"playlist":"My Playlist","profile":"Gaming"});assert_eq!(arguments("playlist",&s).unwrap(),["-control","openPlaylist","-playlist","My Playlist","-monitor","0"]);assert_eq!(arguments("next",&s).unwrap(),["-control","nextWallpaper","-monitor","0"]);assert_eq!(arguments("profile",&s).unwrap(),["-control","openProfile","-profile","Gaming"]);assert_eq!(arguments("pause",&s).unwrap(),["-control","pause"]);}
+    #[test] fn invalid_targets_and_actions(){assert!(arguments("next",&json!({})).is_err());assert!(arguments("next",&json!({"target":"monitor","monitor":32})).is_err());assert!(arguments("playlist",&json!({"target":"location","location":"DISPLAY 1","playlist":"My Playlist"})).unwrap().contains(&"DISPLAY 1".into()));assert!(arguments("command",&json!({})).is_err());assert!(arguments("profile",&json!({"profile":"x\n-inject"})).is_err());}
+    #[test] fn command_uses_real_test_executable(){let path=std::env::temp_dir().join("wallpaper-cli-fixture-project.json");std::fs::write(&path,b"{}").unwrap();let s=json!({"file":path.to_str().unwrap(),"target":"monitor","monitor":1});assert_eq!(arguments("wallpaper",&s).unwrap()[..4],["-control","openWallpaper","-file",path.to_str().unwrap()]);std::fs::remove_file(path).unwrap();}
+}

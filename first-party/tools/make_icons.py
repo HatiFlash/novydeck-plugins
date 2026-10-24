@@ -13,6 +13,8 @@ LABELS = {
     "oledsaver": {"plugin": "", "saver": "OLED"},
     "homeassistant": {"plugin": "", "toggle": "HA", "service": "API", "state": "°C"},
     "googleassistant": {"plugin": "", "command": "G"},
+    "googlehome": {"plugin": "", "control": "⌂"},
+    "wallpaperengine": {"plugin": "", "wallpaper": "▣", "playlist": "≡", "next": "→", "profile": "P", "pause": "Ⅱ", "play": "▶", "stop": "■", "mute": "×", "unmute": "♪"},
 }
 # Dedicated hues, shared geometry and lighting. No third-party brand marks.
 COLORS = {
@@ -23,6 +25,8 @@ COLORS = {
     "oledsaver": ((70, 103, 153), (27, 36, 85)),
     "homeassistant": ((48, 173, 203), (30, 86, 154)),
     "googleassistant": ((223, 99, 137), (129, 50, 115)),
+    "googlehome": ((76, 160, 142), (32, 83, 112)),
+    "wallpaperengine": ((119, 103, 227), (42, 64, 141)),
 }
 SCALE = 4
 
@@ -72,6 +76,14 @@ def logo(name, size):
         d.polygon([(p(25), p(68)), (p(72), p(30)), (p(119), p(68)), (p(108), p(79)), (p(72), p(48)), (p(36), p(79))], fill=white)
         d.rounded_rectangle((p(39), p(73), p(105), p(111)), radius=p(4), fill=white)
         d.rounded_rectangle((p(65), p(83), p(82), p(111)), radius=p(3), fill=COLORS[name][1])
+    elif name == "googlehome":
+        d.polygon([(p(25),p(69)),(p(72),p(30)),(p(119),p(69)),(p(105),p(78)),(p(72),p(51)),(p(39),p(78))],fill=white)
+        d.rounded_rectangle((p(41),p(73),p(103),p(111)),radius=p(5),outline=white,width=p(7))
+        d.ellipse((p(64),p(85),p(80),p(101)),fill=white)
+    elif name == "wallpaperengine":
+        d.rounded_rectangle((p(26),p(33),p(118),p(101)),radius=p(7),outline=white,width=p(7))
+        d.line((p(36),p(89),p(57),p(67),p(71),p(77),p(92),p(51),p(110),p(72)),fill=white,width=p(6),joint="curve")
+        d.line((p(54),p(113),p(90),p(113)),fill=white,width=p(6))
     else:
         d.rounded_rectangle((p(51), p(32), p(93), p(83)), radius=p(20), fill=white)
         d.arc((p(38), p(44), p(106), p(100)), 0, 180, fill=white, width=p(7))
@@ -96,7 +108,7 @@ def action_icon(name, text, size):
 
 
 def main():
-    board = Image.new("RGB", (7 * 180, 230), "#1b1e26")
+    board = Image.new("RGB", (len(LABELS) * 180, 230), "#1b1e26")
     draw = ImageDraw.Draw(board)
     font = ImageFont.truetype(str(FONT), 15)
     for col, (name, actions) in enumerate(LABELS.items()):

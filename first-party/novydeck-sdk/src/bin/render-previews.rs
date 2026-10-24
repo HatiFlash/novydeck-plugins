@@ -24,6 +24,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ("service", vec!["Service".into(), "light.turn_on".into()], None),
         ("state", vec!["État".into(), "19.5 °C".into()], None),
         ("googleassistant-command", vec!["Google".into(), "Commande".into()], None),
+        ("googlehome-control", vec!["Home".into(), "Appareil".into()], None),
+        ("wallpaperengine-wallpaper", vec!["Wallpaper".into(), "Fond".into()], None),
+        ("wallpaperengine-playlist", vec!["Playlist".into()], None),
+        ("wallpaperengine-next", vec!["Suivant".into()], None),
+        ("wallpaperengine-profile", vec!["Profil".into()], None),
+        ("wallpaperengine-pause", vec!["Pause".into()], None),
+        ("wallpaperengine-play", vec!["Lecture".into()], None),
+        ("wallpaperengine-stop", vec!["Stop".into()], None),
+        ("wallpaperengine-mute", vec!["Muet".into()], None),
+        ("wallpaperengine-unmute", vec!["Son".into()], None),
     ] { fs::write(root.join(format!("{name}.png")), novydeck_sdk::render(&lines.iter().map(String::as_str).collect::<Vec<_>>(), gauge)?)?; }
     Ok(())
 }

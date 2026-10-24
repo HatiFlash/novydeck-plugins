@@ -10,7 +10,7 @@ if not edge.is_file():
     raise SystemExit(f'Edge not installed: {edge}')
 output = ROOT / 'inspector-previews'
 output.mkdir(exist_ok=True)
-for name in ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant'):
+for name in ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant', 'googlehome', 'wallpaperengine'):
     html = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.html').read_text(encoding='utf-8')
     css = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.css').read_text(encoding='utf-8')
     for language in ('en', 'fr'):
@@ -18,6 +18,7 @@ for name in ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant'
         page = html.replace('<link rel="stylesheet" href="inspector.css">', f'<style>{css}</style>')
         if language == 'fr':
             page = page.replace('translate();\n</script>', "lang='fr';translate();\n</script>")
+            page = page.replace('translate();visible();\n</script>', "lang='fr';translate();visible();\n</script>")
         target = output / f'{name}-{language}.html'
         target.write_text(page, encoding='utf-8')
         screenshot = output / f'{name}-{language}.png'

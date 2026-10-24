@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
-members = ["novydeck-sdk", "clock", "counter", "sysmonitor", "nowplaying", "oledsaver", "homeassistant", "googleassistant"]
+members = ["novydeck-sdk", "clock", "counter", "sysmonitor", "nowplaying", "oledsaver", "homeassistant", "googleassistant", "googlehome", "wallpaperengine"]
 
 [workspace.package]
 edition = "2021"
-version = "1.0.2"
+version = "1.0.3"
 license = "MIT"
 
 [workspace.dependencies]

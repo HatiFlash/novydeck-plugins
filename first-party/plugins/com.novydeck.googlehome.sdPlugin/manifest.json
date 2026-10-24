@@ -1,0 +1,15 @@
+{
+  "Name": "NovyDeck Google Home",
+  "Description": "Direct device and room control / Commande directe d'appareils et pièces",
+  "Author": "NovyDeck",
+  "Version": "1.0.3",
+  "SDKVersion": 2,
+  "CodePathWin": "bin/novydeck-googlehome.exe",
+  "Icon": "images/plugin-icon",
+  "URL": "https://github.com/HatiFlash/novydeck-plugins",
+  "OS": [{"Platform":"windows","MinimumVersion":"10"}],
+  "Software": {"MinimumVersion":"6.0"},
+  "Actions": [
+    {"UUID":"com.novydeck.googlehome.control","Name":"Control device or room","Tooltip":"Control device or room / Commander appareil ou pièce","Icon":"images/control-icon","PropertyInspectorPath":"inspector.html","Controllers":["Keypad"],"States":[{"Image":"images/control"}]}
+  ]
+}
