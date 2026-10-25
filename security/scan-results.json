@@ -4,7 +4,7 @@
       "id": "com.novydeck.clock",
       "version": "1.0.3",
       "sha256": "2b8a3cc2406fe106d0fdf95fc195917a78079805e2faaab61662694fb501d337",
-      "date": "2026-10-24T22:56:10.980324+00:00",
+      "date": "2026-10-25T15:37:51.104940+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -23,7 +23,7 @@
       "id": "com.novydeck.counter",
       "version": "1.0.3",
       "sha256": "b8cd91152047ee513e145c64006565ee8bb20adc61b94ad2b266606d68cb1bfa",
-      "date": "2026-10-24T22:56:12.529519+00:00",
+      "date": "2026-10-25T15:37:53.172211+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -42,7 +42,7 @@
       "id": "com.novydeck.sysmonitor",
       "version": "1.0.3",
       "sha256": "e56e20b6185688f1e2b69f3baeed063cc6af5b3e5e76272e31253c8c6445187c",
-      "date": "2026-10-24T22:56:13.541980+00:00",
+      "date": "2026-10-25T15:37:54.269122+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -61,7 +61,7 @@
       "id": "com.novydeck.nowplaying",
       "version": "1.0.3",
       "sha256": "def9cd6faab5057d4f388896e7d16077d340c425ff6e858439ffd2747009dc4f",
-      "date": "2026-10-24T22:56:14.638587+00:00",
+      "date": "2026-10-25T15:37:55.328473+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -80,7 +80,7 @@
       "id": "com.novydeck.oledsaver",
       "version": "1.0.3",
       "sha256": "c3eb6992de844d64fb4042cc4e4a7972b91ffa4c3a0d7fe64dd3e475c2e63d00",
-      "date": "2026-10-24T22:56:15.729754+00:00",
+      "date": "2026-10-25T15:37:56.426301+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -99,7 +99,7 @@
       "id": "com.novydeck.homeassistant",
       "version": "1.0.3",
       "sha256": "ea828d3978f15eab2ef6382737eb6008c09e8bf782d57a50deec63cad45aa6ea",
-      "date": "2026-10-24T22:56:16.787907+00:00",
+      "date": "2026-10-25T15:37:57.478588+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -118,7 +118,7 @@
       "id": "com.novydeck.googleassistant",
       "version": "1.0.3",
       "sha256": "954d02935eec0cd522891e5a194a6cfa6864ad7616487b8c7b0296a9ebbee3c8",
-      "date": "2026-10-24T22:56:17.963946+00:00",
+      "date": "2026-10-25T15:37:58.712892+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -137,7 +137,7 @@
       "id": "com.elgato.cpu",
       "version": "1.2",
       "sha256": "582c03fa2c5118e4a083c5b32d411cede07383668d8f4be4c9f131a13a417276",
-      "date": "2026-10-24T22:56:19.192709+00:00",
+      "date": "2026-10-25T15:37:59.920018+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -162,7 +162,7 @@
       "id": "com.barraider.stopwatch",
       "version": "1.1",
       "sha256": "f7551a2b535c1956849c491369b1d85f4b9891edcd1ce759fbcc6fdc24c5f1dc",
-      "date": "2026-10-24T22:56:20.269763+00:00",
+      "date": "2026-10-25T15:38:00.969112+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -223,9 +223,9 @@
     },
     {
       "id": "com.novydeck.googlehome",
-      "version": "1.0.4",
-      "sha256": "058be7c96dad5c56f65e521e26fa6fedbb2faca37dbd8d01f41b8d3a5ca73c4b",
-      "date": "2026-10-24T22:56:24.862725+00:00",
+      "version": "1.0.5",
+      "sha256": "b8464bf74b335c5c558345ad70d052cb400112f34abd75334d60c113f1fe162b",
+      "date": "2026-10-25T15:38:05.098112+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -237,14 +237,14 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 2083027,
-      "unpacked_bytes": 4885261
+      "archive_bytes": 2086115,
+      "unpacked_bytes": 4893480
     },
     {
       "id": "com.novydeck.wallpaperengine",
-      "version": "1.0.4",
-      "sha256": "ca01022c564f22d5d081bcdeb750953e1079498c37531125881c825d115a0df9",
-      "date": "2026-10-24T22:56:25.976806+00:00",
+      "version": "1.0.5",
+      "sha256": "b949abbbb53d6d936701ab33c0b6aee8b85459b9f5d70c49347f49259ebf60c1",
+      "date": "2026-10-25T15:38:06.254018+00:00",
       "defender": "clean",
       "findings": [
         {
@@ -256,8 +256,8 @@
       ],
       "verdict": "passed",
       "urls": [],
-      "archive_bytes": 491136,
-      "unpacked_bytes": 890268
+      "archive_bytes": 491819,
+      "unpacked_bytes": 896973
     }
   ]
 }
