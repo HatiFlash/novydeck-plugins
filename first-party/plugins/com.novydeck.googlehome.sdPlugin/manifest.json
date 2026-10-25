@@ -10,6 +10,6 @@
   "OS": [{"Platform":"windows","MinimumVersion":"10"}],
   "Software": {"MinimumVersion":"6.0"},
   "Actions": [
-    {"UUID":"com.novydeck.googlehome.control","Name":"Control device or room","Tooltip":"Control device or room / Commander appareil ou pièce","Icon":"images/control-icon","PropertyInspectorPath":"inspector.html","Controllers":["Keypad"],"States":[{"Image":"images/control"}]}
+    {"UUID":"com.novydeck.googlehome.control","Name":"Control device or room","Tooltip":"Control device or room / Commander appareil ou pièce","Icon":"images/control-icon","PropertyInspectorPath":"inspector.html","Controllers":["Keypad"],"States":[{"Image":"images/control"},{"Image":"images/control"}]}
   ]
 }

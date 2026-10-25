@@ -2,7 +2,7 @@
 //! gpsoauth exchange/auth forms, Foyer JSON gateway, GetHomeGraph and UpdateTraits layouts.
 //! Restricted to listed Foyer RPCs; no user-supplied URL, method or shell command.
 use std::{collections::{HashMap, HashSet}, fs, path::PathBuf, sync::{atomic::{AtomicBool, Ordering}, mpsc::{self, Receiver, Sender}}, thread, time::Duration};
-use novydeck_sdk::{Client, Event, Plugin};
+use novydeck_sdk::{Client, Event, Plugin, StateSource};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -135,11 +135,16 @@ fn selected_devices<'a>(homes: &'a [Value], settings: &Value) -> Result<Vec<&'a 
 // Adapted from piekstra/google-home-cli src/traits.rs (MIT), commit 1370939af0bd3c1b85bd68701832833a8b7a045e.
 // GetTraits request: [[id], ...] wrapped in one array; response entries: [[id], [[trait, [[field, wrapper]]]]].
 fn toggle_commands(devices: &[&Value], raw: &Value) -> Result<Vec<Value>, String> {
-    if devices.is_empty() { return Err("No devices to toggle".into()); }
+    for d in devices { control_payload(d,"on",None)?; }
+    let observed = observed_states(devices, raw)?;
+    let mode = if observed.values().all(|&on| on) { "off" } else { "on" };
+    devices.iter().map(|d| Ok(control_payload(d,mode,None)?[0][0].clone())).collect()
+}
+fn observed_states(devices: &[&Value], raw: &Value) -> Result<HashMap<String,bool>, String> {
+    if devices.is_empty() { return Err("No devices to read".into()); }
     let mut ids = HashSet::new();
     for d in devices {
-        control_payload(d,"on",None)?;
-        let id = d["id"].as_str().ok_or("Invalid device identity")?;
+        let id = d["id"].as_str().filter(|s| !s.is_empty()).ok_or("Invalid device identity")?;
         if !ids.insert(id) { return Err("Duplicate device identity".into()); }
     }
     let entries = raw.get(0).and_then(Value::as_array).ok_or("Invalid GetTraits response")?;
@@ -164,10 +169,9 @@ fn toggle_commands(devices: &[&Value], raw: &Value) -> Result<Vec<Value>, String
         observed.insert(id, on.ok_or("Missing onOff state")?);
     }
     if observed.len()!=devices.len() { return Err("Missing GetTraits device state".into()); }
-    let mode = if observed.values().all(|&on| on) { "off" } else { "on" };
-    devices.iter().map(|d| Ok(control_payload(d,mode,None)?[0][0].clone())).collect()
+    Ok(observed)
 }
-fn execute_with_rpc(settings: Value, mut call: impl FnMut(&str, Value) -> Result<Value,String>) -> Result<(),String> {
+fn execute_with_rpc(settings: Value, mut call: impl FnMut(&str, Value) -> Result<Value,String>) -> Result<Option<bool>,String> {
     let homes = graph(&call("StructuresService/GetHomeGraph",json!([]))?);
     let devices = selected_devices(&homes, &settings)?;
     let mode = settings["mode"].as_str().ok_or("Choose an action")?;
@@ -182,9 +186,18 @@ fn execute_with_rpc(settings: Value, mut call: impl FnMut(&str, Value) -> Result
         devices.iter().map(|d| Ok(control_payload(d,mode,brightness)?[0][0].clone())).collect::<Result<Vec<_>,String>>()?
     };
     call("HomeControlService/UpdateTraits",json!([commands]))?;
-    Ok(())
+    // An accepted write is not proof of the resulting state. Read exactly the selected IDs;
+    // post-write read failures leave the command successful but its state unknown.
+    let ids: Vec<Value> = devices.iter().map(|d| json!([d["id"]])).collect();
+    let observed = call("HomeControlService/GetTraits",json!([ids]))
+        .and_then(|reply| observed_states(&devices,&reply));
+    Ok(observed.ok().and_then(|states| {
+        if states.values().all(|&on| on) { Some(true) }
+        else if states.values().all(|&on| !on) { Some(false) }
+        else { None }
+    }))
 }
-fn execute(settings: Value) -> Result<(), String> {
+fn execute(settings: Value) -> Result<Option<bool>, String> {
     let client = http()?; let token = bearer(&client, &load()?)?;
     execute_with_rpc(settings, |method,body| rpc(&client,&token,method,body))
 }
@@ -201,7 +214,7 @@ impl<'a> BusyGuard<'a> {
     }
 }
 impl Drop for BusyGuard<'_> { fn drop(&mut self) { self.0.store(false,Ordering::Release); } }
-enum Outcome { Connect(String,Result<(),String>), List(String,Result<Value,String>), Execute(String,Result<(),String>) }
+enum Outcome { Connect(String,Result<(),String>), List(String,Result<Value,String>), Execute(String,Result<Option<bool>,String>) }
 #[derive(Default)] struct Home { settings: HashMap<String,Value>, tx: Option<Sender<Outcome>>, rx: Option<Receiver<Outcome>> }
 impl Home {
     fn status(&self,ctx:&str,sdk:&mut Client)->Result<(),String> { sdk.inspector(ctx,json!({"type":"status","connected":load().is_ok()})) }
@@ -229,7 +242,7 @@ impl Plugin for Home {
         while let Ok(outcome)=self.rx.as_ref().ok_or("Channel unavailable")?.try_recv() { match outcome {
             Outcome::Connect(ctx,r) => { sdk.inspector(&ctx,json!({"type":"message","message":r.as_ref().map(|_|"Connected / Connecté").unwrap_or_else(|e|e.as_str())}))?; self.status(&ctx,sdk)?; },
             Outcome::List(ctx,r) => match r { Ok(homes)=>sdk.inspector(&ctx,json!({"type":"homes","homes":homes}))?,Err(message)=>sdk.inspector(&ctx,json!({"type":"message","message":message}))? },
-            Outcome::Execute(ctx,r) => match r { Ok(())=>{sdk.title(&ctx,"Sent")?;sdk.ok(&ctx)?;},Err(e)=>{sdk.title(&ctx,&e)?;sdk.alert(&ctx)?;} },
+            Outcome::Execute(ctx,r) => match r { Ok(state)=>{sdk.title(&ctx,"Sent")?;match state {Some(on)=>sdk.state(&ctx,on,StateSource::Confirmed)?,None=>sdk.state_unknown(&ctx)?};sdk.ok(&ctx)?;},Err(e)=>{sdk.state_unknown(&ctx)?;sdk.title(&ctx,&e)?;sdk.alert(&ctx)?;} },
         } } Ok(())
     }
 }
@@ -249,6 +262,22 @@ fn main() { let (tx,rx)=mpsc::channel(); if let Err(e)=novydeck_sdk::run(Home{tx
     }
     fn device(id: &str, room: &str, supported: bool) -> Value { json!({"id":id,"agent":"agent","partner":"partner","room_id":room,"traits":if supported {vec!["action.devices.traits.OnOff"]} else {vec![]}}) }
     fn states(values: &[(&str, Value)]) -> Value { json!([values.iter().map(|(id, value)| json!([[id],[["onOff",[["onOff",value]]]]])).collect::<Vec<_>>()]) }
+    #[test] fn post_write_read_is_confirmed_only_for_uniform_valid_states() {
+        let raw=json!([0,[["h","Home",null,null,null,[],[[["a",["agent","partner"]],null,null,"Lamp",null,null,["action.devices.traits.OnOff"]],[["b",["agent","partner"]],null,null,"Fan",null,null,["action.devices.traits.OnOff"]]]]]]);
+        let settings=json!({"home":"h","scope":"group","targets":["b","a"],"mode":"on"});
+        for (reply,expected) in [(states(&[("a",json!([null,null,null,1])),("b",json!([null,null,null,1]))]),Some(true)),(states(&[("a",json!([null,null,null,0])),("b",json!([null,null,null,0]))]),Some(false)),(states(&[("a",json!([null,null,null,1])),("b",json!([null,null,null,0]))]),None),(states(&[("a",json!([null,null,null,1]))]),None),(states(&[("a",json!([null,null,null,2])),("b",json!([null,null,null,1]))]),None)] {
+            let mut calls=Vec::new(); let outcome=execute_with_rpc(settings.clone(),|method,body| {calls.push((method.to_owned(),body));match method {"StructuresService/GetHomeGraph"=>Ok(raw.clone()),"HomeControlService/UpdateTraits"=>Ok(json!([])),"HomeControlService/GetTraits"=>Ok(reply.clone()),_=>panic!("unexpected RPC")}}).unwrap();
+            assert_eq!(outcome,expected);
+            assert_eq!(calls.iter().map(|(method,_)|method.as_str()).collect::<Vec<_>>(),vec!["StructuresService/GetHomeGraph","HomeControlService/UpdateTraits","HomeControlService/GetTraits"]);
+            assert_eq!(calls[2].1,json!([[ ["b"],["a"] ]]));
+        }
+        let mut calls=Vec::new();
+        let outcome=execute_with_rpc(settings.clone(),|method,_| {calls.push(method.to_owned()); match method {"StructuresService/GetHomeGraph"=>Ok(raw.clone()),"HomeControlService/UpdateTraits"=>Ok(json!([])),"HomeControlService/GetTraits"=>Err("read failed".into()),_=>panic!()}}).unwrap();
+        assert_eq!(outcome,None);assert_eq!(calls.len(),3);
+        let mut calls=Vec::new();
+        let outcome=execute_with_rpc(settings,|method,_| {calls.push(method.to_owned()); match method {"StructuresService/GetHomeGraph"=>Ok(raw.clone()),"HomeControlService/UpdateTraits"=>Err("write failed".into()),_=>panic!("read after failed write")}});
+        assert!(outcome.is_err());assert_eq!(calls.len(),2);
+    }
     #[test] fn toggle_reads_real_boolean_and_inverts() {
         let d=device("lamp","r1",true);
         assert_eq!(toggle_commands(&[&d], &states(&[("lamp",json!([null,null,null,1]))])).unwrap(), vec![control_payload(&d,"off",None).unwrap()[0][0].clone()]);
@@ -295,7 +324,7 @@ fn main() { let (tx,rx)=mpsc::channel(); if let Err(e)=novydeck_sdk::run(Home{tx
             calls.push((method.to_string(),body));
             match method {"StructuresService/GetHomeGraph"=>Ok(raw.clone()),"HomeControlService/GetTraits"=>Ok(states(&[("a",json!([null,null,null,0]))])),"HomeControlService/UpdateTraits"=>Ok(json!([])),_=>panic!("unexpected RPC")}
         }).unwrap();
-        assert_eq!(calls.iter().map(|(m,_)|m.as_str()).collect::<Vec<_>>(),vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits","HomeControlService/UpdateTraits"]);
+        assert_eq!(calls.iter().map(|(m,_)|m.as_str()).collect::<Vec<_>>(),vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits","HomeControlService/UpdateTraits","HomeControlService/GetTraits"]);
         assert_eq!(calls[1].1,json!([[ ["a"] ]]));
         assert_eq!(calls[2].1,json!([[control_payload(&device("a","r",true),"on",None).unwrap()[0][0].clone()]]));
     }
@@ -317,7 +346,7 @@ fn main() { let (tx,rx)=mpsc::channel(); if let Err(e)=novydeck_sdk::run(Home{tx
             let mut calls=Vec::new();
             let result=execute_with_rpc(json!({"home":"h","scope":"group","targets":["b","a"],"mode":"toggle"}),|method,body| {calls.push((method.to_string(),body));match method {"StructuresService/GetHomeGraph"=>Ok(raw.clone()),"HomeControlService/GetTraits"=>Ok(states_reply.clone()),"HomeControlService/UpdateTraits"=>Ok(json!([])),_=>panic!("unexpected RPC")}});
             assert_eq!(result.is_ok(),expected);
-            assert_eq!(calls.iter().map(|(m,_)|m.as_str()).collect::<Vec<_>>(),if expected {vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits","HomeControlService/UpdateTraits"]} else {vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits"]});
+            assert_eq!(calls.iter().map(|(m,_)|m.as_str()).collect::<Vec<_>>(),if expected {vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits","HomeControlService/UpdateTraits","HomeControlService/GetTraits"]} else {vec!["StructuresService/GetHomeGraph","HomeControlService/GetTraits"]});
             assert_eq!(calls[1].1,json!([[ ["b"],["a"] ]]));
             if expected {assert_eq!(calls[2].1.as_array().unwrap()[0].as_array().unwrap().len(),2);}
         }

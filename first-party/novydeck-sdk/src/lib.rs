@@ -41,8 +41,30 @@ pub trait Plugin {
     fn tick(&mut self, sdk: &mut Client) -> Result<(), String>;
 }
 
+/// Provenance of a reported state. `Local` is only the plugin's last successful command,
+/// not a measurement of external hardware or software.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StateSource { Confirmed, Local }
+
+pub fn state_message(context: &str, on: bool, source: StateSource) -> Value {
+    json!({"event":"setState", "context":context, "payload":{
+        "state":if on {1} else {0},
+        "novydeckStateSource":match source { StateSource::Confirmed => "confirmed", StateSource::Local => "local" }
+    }})
+}
+/// Extension for clearing an application's last known state; older hosts ignore it.
+pub fn unknown_state_message(context: &str) -> Value {
+    json!({"event":"novydeckStateUnknown", "context":context})
+}
+
 pub struct Client { ws: tungstenite::WebSocket<MaybeTlsStream<TcpStream>> }
 impl Client {
+    pub fn state(&mut self, context: &str, on: bool, source: StateSource) -> Result<(), String> {
+        self.send(state_message(context, on, source))
+    }
+    pub fn state_unknown(&mut self, context: &str) -> Result<(), String> {
+        self.send(unknown_state_message(context))
+    }
     pub fn send(&mut self, value: Value) -> Result<(), String> {
         self.ws.send(Message::Text(value.to_string().into())).map_err(|e| e.to_string())
     }
@@ -136,5 +158,10 @@ pub fn render(lines: &[&str], progress: Option<f32>) -> Result<Vec<u8>, String> 
     use super::*;
     #[test] fn parse_args() { let args = Args::parse(["-port", "1234", "-pluginUUID", "a", "-registerEvent", "registerPlugin", "-info", "{}"].map(str::to_owned)).unwrap(); assert_eq!(args.port, 1234); }
     #[test] fn parse_event() { let e = Event::parse(r#"{"event":"keyDown","context":"abc","payload":{"settings":{"x":1}}}"#).unwrap(); assert_eq!(e.name,"keyDown"); assert_eq!(e.settings()["x"], 1); }
+    #[test] fn state_messages_have_numeric_state_source_and_context() {
+        assert_eq!(state_message("key", false, StateSource::Confirmed), json!({"event":"setState","context":"key","payload":{"state":0,"novydeckStateSource":"confirmed"}}));
+        assert_eq!(state_message("key", true, StateSource::Local), json!({"event":"setState","context":"key","payload":{"state":1,"novydeckStateSource":"local"}}));
+        assert_eq!(unknown_state_message("key"), json!({"event":"novydeckStateUnknown","context":"key"}));
+    }
     #[test] fn png_dimensions() { let png = render(&["Hello"],Some(0.5)).unwrap(); assert!(png.len() > 100); let decoded = image::load_from_memory(&png).unwrap(); assert_eq!((decoded.width(),decoded.height()),(144,144)); }
 }
