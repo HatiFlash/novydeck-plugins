@@ -1,5 +1,12 @@
 # First-party plugins / Plugins maison
 
+## Macro ON/OFF (development sources, not a published release) / Macro ON/OFF (sources de développement, pas une version publiée)
+
+EN: Add two OLED Saver blocks set to ON, one per screen, then one SignalRGB Lighting block set to OFF, and a Google Home 1.0.5 group block set to OFF with the selected lamps (1–20 device IDs). To restore, use OLED Saver OFF for each screen, SignalRGB ON, and Google Home group ON. An existing OLED key without `mode` remains Toggle. SignalRGB affects the entire lighting canvas, not individual lights: OFF sends black but does not cut physical power. These sources have not been verified on Windows, SignalRGB, a Google account or hardware. Macro execution/order depends on the NovyDeck host and has not been end-to-end tested.
+
+FR : Ajoutez deux blocs OLED Saver en mode ON, un par écran, puis un bloc Éclairage SignalRGB en mode OFF et un bloc Google Home 1.0.5 en scope groupe / mode OFF pour les lampes choisies (1 à 20 ID). Pour restaurer : OLED Saver OFF sur chaque écran, SignalRGB ON et Google Home groupe ON. Une touche OLED existante sans `mode` reste en bascule. SignalRGB agit sur le canvas global et OFF envoie du noir sans couper l'alimentation physique. Sources non vérifiées sur Windows, SignalRGB, compte Google ou matériel ; exécution et ordre d'une macro non validés de bout en bout dans NovyDeck.
+
+
 ## New in 1.0.4 / Nouveautés 1.0.4
 
 **Google Home:** choose **Toggle ON/OFF** to read and invert the device's real state. Select **Group (selected devices)** and use **+** to add up to 20 devices from the same home, or **−** to remove one. For groups and rooms, all ON turns all OFF; otherwise all turn ON. Missing state or an unsupported target blocks the whole update before any write. Saved single-device settings and encrypted credentials are preserved.
@@ -31,7 +38,7 @@ Installez depuis le magasin de plugins de NovyDeck, puis revenez au deck : retro
 
 These are real inspector captures initialized with local protocol fixtures, not proof of a Google account connection or a wallpaper change. / Captures réelles des inspecteurs initialisés avec des messages locaux de test, pas une preuve de connexion Google ou de changement de fond.
 
-This workspace contains the SDK and nine Windows plugins: Clock, Counter, System Monitor, Now Playing, OLED Saver, Home Assistant, Google Assistant Command, Google Home and Wallpaper Engine. The SDK speaks the local Stream Deck WebSocket plugin protocol and renders 144×144 PNG keys with bundled DejaVu Sans (license in `novydeck-sdk/assets/DEJAVU-LICENSE.txt`). No Node runtime or CDN is required. Source and bundles are MIT licensed; the font retains its own license. Google Home and Wallpaper Engine use 1.0.4; the other seven manifests and the Rust workspace remain 1.0.3.
+This workspace contains the SDK and ten Windows plugins: Clock, Counter, System Monitor, Now Playing, OLED Saver, SignalRGB Lighting, Home Assistant, Google Assistant Command, Google Home and Wallpaper Engine. The SDK speaks the local Stream Deck WebSocket plugin protocol and renders 144×144 PNG keys with bundled DejaVu Sans (license in `novydeck-sdk/assets/DEJAVU-LICENSE.txt`). No Node runtime or CDN is required. Source and bundles are MIT licensed; the font retains its own license. See each manifest for its version; not every plugin is bumped in a bundle.
 
 On Windows: `cargo generate-lockfile`, `cargo build --release --locked`, `cargo test --locked`, `cargo run --release --locked --bin render-previews`, `python tools/make_icons.py`, `python tools/capture_inspectors.py`, `python tools/package.py`. Icon generation needs Pillow; inspector previews use installed Microsoft Edge, offline with a fake local WebSocket. CI builds/tests on Windows and uploads plugin archives, `SHA256SUMS.txt` and previews for manual runs. Only `first-party-v*` tags publish releases; a branch run does not publish. Do not copy the registry template into `registry.json` until release URLs, SHA-256 and schema-validated metadata exist.
 

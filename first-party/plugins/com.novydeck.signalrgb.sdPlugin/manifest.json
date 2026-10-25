@@ -1,0 +1,8 @@
+{
+  "Name":"NovyDeck SignalRGB Lighting", "Description":"Global SignalRGB canvas ON/OFF / Canvas SignalRGB global ON/OFF", "Author":"NovyDeck", "Version":"1.0.3", "SDKVersion":2,
+  "CodePathWin":"bin/novydeck-signalrgb.exe", "Icon":"images/plugin-icon", "URL":"https://github.com/HatiFlash/novydeck-plugins",
+  "OS":[{"Platform":"windows","MinimumVersion":"10"}], "Software":{"MinimumVersion":"6.0"},
+  "Actions":[
+    {"UUID":"com.novydeck.signalrgb.lighting","Name":"SignalRGB lighting ON/OFF","Tooltip":"Global lighting ON/OFF / Éclairage global ON/OFF","Icon":"images/lighting-icon","PropertyInspectorPath":"inspector.html","Controllers":["Keypad"],"States":[{"Image":"images/lighting"}]}
+  ]
+}

@@ -1,6 +1,6 @@
 [package]
 name = "novydeck-oledsaver"
-version.workspace = true
+version = "1.0.4"
 edition.workspace = true
 license.workspace = true
 
