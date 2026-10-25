@@ -1,6 +1,8 @@
 # First-party plugins / Plugins maison
 
-## Macro ON/OFF (development sources, not a published release) / Macro ON/OFF (sources de développement, pas une version publiée)
+## Macro ON/OFF / Macro ON/OFF
+
+The first-party v1.0.6 bundle includes OLED Saver 1.0.4 and the new SignalRGB Lighting 1.0.3; Google Home remains 1.0.5. The plugin store points to each plugin's own version, not to every archive in a bundle. / Le lot maison v1.0.6 contient OLED Saver 1.0.4 et le nouveau SignalRGB 1.0.3 ; Google Home reste en 1.0.5. Le magasin référence la version propre à chaque plugin, pas chaque archive du lot.
 
 EN: Add two OLED Saver blocks set to ON, one per screen, then one SignalRGB Lighting block set to OFF, and a Google Home 1.0.5 group block set to OFF with the selected lamps (1–20 device IDs). To restore, use OLED Saver OFF for each screen, SignalRGB ON, and Google Home group ON. An existing OLED key without `mode` remains Toggle. SignalRGB affects the entire lighting canvas, not individual lights: OFF sends black but does not cut physical power. SignalRGB's Local API may require Pro and reject a Free installation with HTTP 403. The Windows VM build, offline plugin tests and NovyDeck block-settings test passed; SignalRGB, a Google account and real hardware were not exercised. Macro execution/order has not been end-to-end tested against devices.
 
