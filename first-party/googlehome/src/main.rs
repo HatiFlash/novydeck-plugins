@@ -166,7 +166,7 @@ fn observed_states(devices: &[&Value], raw: &Value) -> Result<HashMap<String,boo
                 on = Some(match wrapper.get(3) { Some(Value::Bool(b)) => *b, Some(Value::Number(n)) if n.as_i64()==Some(0) => false, Some(Value::Number(n)) if n.as_i64()==Some(1) => true, _ => return Err("Unknown onOff state".into()) });
             }
         }
-        observed.insert(id, on.ok_or("Missing onOff state")?);
+        observed.insert(id.to_owned(), on.ok_or("Missing onOff state")?);
     }
     if observed.len()!=devices.len() { return Err("Missing GetTraits device state".into()); }
     Ok(observed)
