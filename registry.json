@@ -178,7 +178,7 @@
       "id": "com.novydeck.oledsaver",
       "name": "NovyDeck OLED Saver",
       "author": "NovyDeck",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "description": "Cover a selected monitor with a borderless black fullscreen window; no Windows power settings changed.",
       "description_fr": "Recouvre l'écran choisi d'une fenêtre noire sans bordure ; aucun réglage d'alimentation Windows modifié.",
       "summary": "Black fullscreen overlay",
@@ -201,11 +201,45 @@
       "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.3/com.novydeck.oledsaver.streamDeckPlugin",
-      "sha256": "c3eb6992de844d64fb4042cc4e4a7972b91ffa4c3a0d7fe64dd3e475c2e63d00",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.6/com.novydeck.oledsaver.streamDeckPlugin",
+      "sha256": "8c103b0e902eb81bbdee7f3f26360d462be51ca7f209daaff4aab3014d4fc073",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.oledsaver.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/oledsaver/keys.png"
+      ]
+    },
+    {
+      "id": "com.novydeck.signalrgb",
+      "name": "NovyDeck SignalRGB Lighting",
+      "author": "NovyDeck",
+      "version": "1.0.3",
+      "description": "Set the local SignalRGB canvas explicitly ON or OFF; OFF sends black globally, without cutting device power.",
+      "description_fr": "Active ou désactive explicitement le canvas SignalRGB local ; OFF envoie du noir globalement sans couper l'alimentation.",
+      "summary": "Global SignalRGB lighting ON/OFF",
+      "summary_fr": "Éclairage SignalRGB global ON/OFF",
+      "category": "utilities",
+      "uuid": "com.novydeck.signalrgb",
+      "actions": [
+        {
+          "name": "SignalRGB lighting ON/OFF",
+          "name_fr": "Éclairage SignalRGB ON/OFF"
+        }
+      ],
+      "tags": [
+        "signalrgb",
+        "rgb",
+        "lighting"
+      ],
+      "homepage": "https://github.com/HatiFlash/novydeck-plugins/tree/main/first-party/plugins/com.novydeck.signalrgb.sdPlugin",
+      "license": "MIT",
+      "tested_decks": [],
+      "min_novydeck": "0.11.1",
+      "requires": "Windows 10+; SignalRGB running locally; Local API may require SignalRGB Pro",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.6/com.novydeck.signalrgb.streamDeckPlugin",
+      "sha256": "d7da16d79d3bcffb965547a6168126a003557ec2d36f7f13f549300351f778e9",
+      "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.signalrgb.sdPlugin/images/plugin@2x.png",
+      "screenshots": [
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/signalrgb/keys.png"
       ]
     },
     {
