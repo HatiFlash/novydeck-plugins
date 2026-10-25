@@ -1,5 +1,5 @@
 {
-  "Name":"NovyDeck Wallpaper Engine","Description":"Wallpaper Engine controls / Commandes Wallpaper Engine","Author":"NovyDeck","Version":"1.0.4","SDKVersion":2,"CodePathWin":"bin/novydeck-wallpaperengine.exe","Icon":"images/plugin-icon","URL":"https://github.com/HatiFlash/novydeck-plugins","OS":[{"Platform":"windows","MinimumVersion":"10"}],"Software":{"MinimumVersion":"6.0"},
+  "Name":"NovyDeck Wallpaper Engine","Description":"Wallpaper Engine controls / Commandes Wallpaper Engine","Author":"NovyDeck","Version":"1.0.5","SDKVersion":2,"CodePathWin":"bin/novydeck-wallpaperengine.exe","Icon":"images/plugin-icon","URL":"https://github.com/HatiFlash/novydeck-plugins","OS":[{"Platform":"windows","MinimumVersion":"10"}],"Software":{"MinimumVersion":"6.0"},
   "Actions":[
     {"UUID":"com.novydeck.wallpaperengine.wallpaper","Name":"Open wallpaper","Tooltip":"Open wallpaper / Ouvrir un fond","Icon":"images/wallpaper-icon","PropertyInspectorPath":"inspector.html","Controllers":["Keypad"],"States":[{"Image":"images/wallpaper"}]},
     {"UUID":"com.novydeck.wallpaperengine.playlist","Name":"Open playlist","Tooltip":"Open playlist / Ouvrir une playlist","Icon":"images/playlist-icon","PropertyInspectorPath":"inspector.html","Controllers":["Keypad"],"States":[{"Image":"images/playlist"}]},

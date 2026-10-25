@@ -52,7 +52,8 @@ pub fn state_message(context: &str, on: bool, source: StateSource) -> Value {
         "novydeckStateSource":match source { StateSource::Confirmed => "confirmed", StateSource::Local => "local" }
     }})
 }
-/// Extension for clearing an application's last known state; older hosts ignore it.
+/// NovyDeck extension for clearing the last known state. Requires a supporting host;
+/// older NovyDeck versions may reject the event, so distribution must gate the host version.
 pub fn unknown_state_message(context: &str) -> Value {
     json!({"event":"novydeckStateUnknown", "context":context})
 }

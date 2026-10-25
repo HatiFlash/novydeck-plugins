@@ -2,7 +2,7 @@
   "Name": "NovyDeck Google Home",
   "Description": "Direct device and room control / Commande directe d'appareils et pièces",
   "Author": "NovyDeck",
-  "Version": "1.0.4",
+  "Version": "1.0.5",
   "SDKVersion": 2,
   "CodePathWin": "bin/novydeck-googlehome.exe",
   "Icon": "images/plugin-icon",
