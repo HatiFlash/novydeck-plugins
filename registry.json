@@ -434,11 +434,11 @@
       "id": "com.novydeck.wallpaperengine",
       "name": "NovyDeck Wallpaper Engine",
       "author": "NovyDeck",
-      "version": "1.0.5",
-      "description": "Official Wallpaper Engine CLI controls: wallpaper and playlists per screen, profiles and local-state pause/play toggle globally.",
-      "description_fr": "Commandes officielles Wallpaper Engine : fonds et playlists par écran, profils et bascule pause/lecture globale à état local.",
-      "summary": "Wallpaper, playlist, display selection and pause/play toggle",
-      "summary_fr": "Fonds, playlists, choix écran et bascule pause/lecture",
+      "version": "1.0.6",
+      "description": "Official Wallpaper Engine CLI: wallpapers per screen, profiles and shared local-state Pause/Play or Stop/Play controls globally.",
+      "description_fr": "CLI officielle Wallpaper Engine : fonds par écran, profils et bascules Pause/Lecture ou Arrêt/Lecture globales à état local partagé.",
+      "summary": "Wallpapers, playlists and Pause/Play or Stop/Play",
+      "summary_fr": "Fonds, playlists et bascules Pause/Lecture ou Arrêt/Lecture",
       "category": "utilities",
       "uuid": "com.novydeck.wallpaperengine",
       "actions": [
@@ -471,6 +471,10 @@
           "name_fr": "Arrêt (tous écrans)"
         },
         {
+          "name": "Stop / Play (all screens)",
+          "name_fr": "Arrêt / Lecture (tous écrans)"
+        },
+        {
           "name": "Mute (all screens)",
           "name_fr": "Couper le son (tous écrans)"
         },
@@ -489,10 +493,12 @@
       "tested_decks": [],
       "min_novydeck": "0.11.0",
       "requires": "Windows 10+; separately installed and running Wallpaper Engine (Steam)",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.5/com.novydeck.wallpaperengine.streamDeckPlugin",
-      "sha256": "b949abbbb53d6d936701ab33c0b6aee8b85459b9f5d70c49347f49259ebf60c1",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.7/com.novydeck.wallpaperengine.streamDeckPlugin",
+      "sha256": "4363a44ed9567cf71b80efe6c06a6b79d104463779f185e1a5e3969ca13a70a4",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.wallpaperengine.sdPlugin/images/plugin@2x.png",
       "screenshots": [
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-stopplay-fr.png",
+        "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-stopplay-en.png",
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-pause-fr.png",
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/wallpaperengine/wallpaperengine-playlist-fr.png"
       ]
