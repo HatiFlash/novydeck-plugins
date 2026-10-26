@@ -46,46 +46,43 @@ fn run(action:&str,s:&Value)->Result<(),String> {
     if status.success(){Ok(())}else{Err(format!("Wallpaper Engine exit: {status}"))}
 }
 // Local command state only: external changes in Wallpaper Engine are not observable here.
-#[derive(Default)] struct Wallpaper{states:HashMap<String,Value>,actions:HashMap<String,String>,paused:bool,known:bool}
+#[derive(Clone,Copy,Default,PartialEq,Eq,Debug)] enum Playback {#[default] Unknown,Playing,Paused,Stopped}
+#[derive(Default)] struct Wallpaper{states:HashMap<String,Value>,actions:HashMap<String,String>,playback:Playback}
 impl Wallpaper {
     fn appearance_state(&self,ctx:&str)->Value {
-        if self.known {novydeck_sdk::state_message(ctx,!self.paused,StateSource::Local)}
-        else {novydeck_sdk::unknown_state_message(ctx)}
+        let state=match self.actions.get(ctx).map(String::as_str) {
+            Some("stopplay") => match self.playback {Playback::Unknown=>None,Playback::Stopped=>Some(false),_=>Some(true)},
+            Some("pause"|"play") => match self.playback {Playback::Playing=>Some(true),Playback::Paused=>Some(false),_=>None},
+            _=>None,
+        };
+        match state {Some(value)=>novydeck_sdk::state_message(ctx,value,StateSource::Local),None=>novydeck_sdk::unknown_state_message(ctx)}
     }
     fn command_messages(&mut self,ctx:&str,success:bool)->Vec<Value> {
         if !success{return Vec::new();}
-        let action=self.actions.get(ctx).map(String::as_str);
-        let reports=matches!(action,Some("pause"|"play"));
-        let stops=action==Some("stop");
-        self.command_result(ctx,true);
-        if reports {
-            self.known=true;
-            self.actions.iter().filter(|(_,a)|matches!(a.as_str(),"pause"|"play"))
-                .map(|(context,_)|self.appearance_state(context)).collect()
-        } else if stops {
-            self.known=false;
-            self.actions.iter().filter(|(_,a)|matches!(a.as_str(),"pause"|"play"))
-                .map(|(context,_)|self.appearance_state(context)).collect()
-        } else {Vec::new()}
+        let action=self.actions.get(ctx).map(String::as_str).unwrap_or("");
+        let command=self.command_for(ctx).to_owned();
+        if !matches!(action,"pause"|"play"|"stop"|"stopplay"){return Vec::new();}
+        self.playback=match command.as_str(){"stop"=>Playback::Stopped,"pause"=>Playback::Paused,"play"=>Playback::Playing,_=>return Vec::new()};
+        self.actions.iter().filter(|(_,a)|matches!(a.as_str(),"pause"|"play"|"stopplay"))
+            .map(|(context,_)|self.appearance_state(context)).collect()
     }
     fn command_for(&self,ctx:&str)->&str {
         match self.actions.get(ctx).map(String::as_str) {
-            Some("pause") if self.paused => "play",
+            Some("pause") if self.playback==Playback::Paused => "play",
+            Some("stopplay") if self.playback==Playback::Stopped => "play",
+            Some("stopplay") => "stop",
             Some(action) => action,
             None => "",
         }
     }
-    fn command_result(&mut self,ctx:&str,success:bool){
-        if !success{return;}
-        match self.actions.get(ctx).map(String::as_str) {
-            Some("pause") => self.paused=!self.paused,
-            Some("play"|"stop") => self.paused=false,
-            _=>(),
-        }
-    }
     fn refresh_pause_titles(&self,sdk:&mut Client)->Result<(),String>{
-        let label=if self.paused {"Play / Lecture"} else {"Pause"};
+        let label=if self.playback==Playback::Paused {"Play / Lecture"} else {"Pause"};
         for (ctx,action) in &self.actions {if action=="pause" {sdk.title(ctx,label)?;}}
+        Ok(())
+    }
+    fn refresh_stopplay_titles(&self,sdk:&mut Client)->Result<(),String>{
+        let label=if self.playback==Playback::Stopped {"Play / Lecture"} else {"Stop / Arrêt"};
+        for (ctx,action) in &self.actions {if action=="stopplay" {sdk.title(ctx,label)?;}}
         Ok(())
     }
 }
@@ -97,8 +94,9 @@ impl Plugin for Wallpaper {
                 self.states.insert(ctx.clone(),e.settings().clone());
                 if let Some(action)=e.action.strip_prefix(PREFIX){self.actions.insert(ctx.clone(),action.into());}
                 if self.actions.get(&ctx).is_some_and(|a|a=="pause") {self.refresh_pause_titles(sdk)?;}
+                else if self.actions.get(&ctx).is_some_and(|a|a=="stopplay") {self.refresh_stopplay_titles(sdk)?;}
                 else {sdk.title(&ctx,"Wallpaper")?;}
-                if self.actions.get(&ctx).is_some_and(|a|matches!(a.as_str(),"pause"|"play")) {sdk.send(self.appearance_state(&ctx))?;}
+                if self.actions.get(&ctx).is_some_and(|a|matches!(a.as_str(),"pause"|"play"|"stopplay")) {sdk.send(self.appearance_state(&ctx))?;}
             },
             "willDisappear"=>{self.states.remove(&ctx);self.actions.remove(&ctx);},
             "didReceiveSettings"=>{self.states.insert(ctx.clone(),e.settings().clone());},
@@ -107,7 +105,7 @@ impl Plugin for Wallpaper {
                 let action=self.command_for(&ctx).to_owned();
                 let settings=self.states.get(&ctx).cloned().unwrap_or(Value::Null);
                 match run(&action,&settings){
-                    Ok(())=>{for message in self.command_messages(&ctx,true){sdk.send(message)?;}self.refresh_pause_titles(sdk)?;sdk.ok(&ctx)?;},
+                    Ok(())=>{for message in self.command_messages(&ctx,true){sdk.send(message)?;}self.refresh_pause_titles(sdk)?;self.refresh_stopplay_titles(sdk)?;sdk.ok(&ctx)?;},
                     Err(message)=>{sdk.inspector(&ctx,json!({"type":"message","message":message}))?;sdk.alert(&ctx)?;}
                 }
             },_=>(),
@@ -127,22 +125,46 @@ fn main(){if let Err(e)=novydeck_sdk::run(Wallpaper::default()){eprintln!("wallp
         assert!(state.command_messages("one",false).is_empty());assert_eq!(state.appearance_state("two")["payload"]["state"],0);
         let messages=state.command_messages("two",true);assert_eq!(messages.len(),2);for message in &messages {assert_eq!(message["payload"]["state"],1);}
     }
-    #[test] fn official_argument_shapes(){let s=json!({"target":"monitor","monitor":0,"playlist":"My Playlist","profile":"Gaming"});assert_eq!(arguments("playlist",&s).unwrap(),["-control","openPlaylist","-playlist","My Playlist","-monitor","0"]);assert_eq!(arguments("next",&s).unwrap(),["-control","nextWallpaper","-monitor","0"]);assert_eq!(arguments("profile",&s).unwrap(),["-control","openProfile","-profile","Gaming"]);assert_eq!(arguments("pause",&s).unwrap(),["-control","pause"]);}
+    #[test] fn official_argument_shapes(){let s=json!({"target":"monitor","monitor":0,"playlist":"My Playlist","profile":"Gaming"});assert_eq!(arguments("playlist",&s).unwrap(),["-control","openPlaylist","-playlist","My Playlist","-monitor","0"]);assert_eq!(arguments("next",&s).unwrap(),["-control","nextWallpaper","-monitor","0"]);assert_eq!(arguments("profile",&s).unwrap(),["-control","openProfile","-profile","Gaming"]);assert_eq!(arguments("pause",&s).unwrap(),["-control","pause"]);assert_eq!(arguments("stop",&s).unwrap(),["-control","stop"]);assert_eq!(arguments("play",&s).unwrap(),["-control","play"]);assert!(arguments("stopplay",&s).is_err());}
+    #[test] fn stopplay_shared_with_explicit_commands_and_pause(){
+        let mut state=Wallpaper::default();
+        for (ctx,action) in [("one","stopplay"),("two","stopplay"),("pause","pause"),("play","play"),("stop","stop")] {state.actions.insert(ctx.into(),action.into());}
+        assert_eq!(state.command_for("one"),"stop");
+        assert_eq!(state.appearance_state("one"),novydeck_sdk::unknown_state_message("one"));
+        assert!(state.command_messages("one",false).is_empty());
+        assert_eq!(state.command_for("two"),"stop");
+        let messages=state.command_messages("one",true);assert_eq!(messages.len(),4);
+        assert_eq!(state.command_for("two"),"play");
+        assert_eq!(state.appearance_state("one")["payload"]["state"],0);
+        assert_eq!(state.appearance_state("one")["payload"]["novydeckStateSource"],"local");
+        assert_eq!(state.appearance_state("pause"),novydeck_sdk::unknown_state_message("pause"));
+        assert!(state.command_messages("two",false).is_empty());assert_eq!(state.command_for("two"),"play");
+        state.command_messages("play",true);assert_eq!(state.command_for("one"),"stop");
+        assert_eq!(state.appearance_state("two")["payload"]["state"],1);
+        state.command_messages("pause",true);assert_eq!(state.playback,Playback::Paused);
+        assert_eq!(state.command_for("pause"),"play");assert_eq!(state.command_for("one"),"stop");
+        assert_eq!(state.appearance_state("one")["payload"]["state"],1);
+        assert_eq!(state.appearance_state("pause")["payload"]["state"],0);
+        state.command_messages("stop",true);assert_eq!(state.command_for("one"),"play");
+        assert_eq!(state.appearance_state("pause"),novydeck_sdk::unknown_state_message("pause"));
+        state.command_messages("one",true);assert_eq!(state.command_for("two"),"stop");
+        assert_eq!(state.appearance_state("pause")["payload"]["state"],1);
+    }
     #[test] fn invalid_targets_and_actions(){assert!(arguments("next",&json!({})).is_err());assert!(arguments("next",&json!({"target":"monitor","monitor":32})).is_err());assert!(arguments("playlist",&json!({"target":"location","location":"DISPLAY 1","playlist":"My Playlist"})).unwrap().contains(&"DISPLAY 1".into()));assert!(arguments("command",&json!({})).is_err());assert!(arguments("profile",&json!({"profile":"x\n-inject"})).is_err());}
     #[test] fn pause_alternates_globally_and_failed_commands_do_not_flip(){
         let mut state=Wallpaper::default();
         state.actions.insert("one".into(),"pause".into());
         state.actions.insert("two".into(),"pause".into());
         assert_eq!(state.command_for("one"),"pause");
-        state.command_result("one",true);
+        state.command_messages("one",true);
         assert_eq!(state.command_for("two"),"play");
-        state.command_result("two",false);
+        state.command_messages("two",false);
         assert_eq!(state.command_for("one"),"play");
-        state.command_result("two",true);
+        state.command_messages("two",true);
         assert_eq!(state.command_for("one"),"pause");
         state.actions.insert("three".into(),"play".into());
-        state.command_result("one",true);
-        state.command_result("three",true);
+        state.command_messages("one",true);
+        state.command_messages("three",true);
         assert_eq!(state.command_for("two"),"pause");
     }
     #[test] fn real_process_receives_next_and_spaces_and_reports_exit(){
@@ -162,8 +184,12 @@ fn main(){if let Err(e)=novydeck_sdk::run(Wallpaper::default()){eprintln!("wallp
         let playlist=json!({"executable":exe,"target":"monitor","monitor":0,"playlist":"My Playlist"});
         assert!(run("playlist",&playlist).is_ok());
         assert_eq!(std::fs::read_to_string(&log).unwrap(),"-control\nopenPlaylist\n-playlist\nMy Playlist\n-monitor\n0");
+        assert!(run("stop",&settings).is_ok());
+        assert_eq!(std::fs::read_to_string(&log).unwrap(),"-control\nstop");
+        assert!(run("play",&settings).is_ok());
+        assert_eq!(std::fs::read_to_string(&log).unwrap(),"-control\nplay");
         std::env::set_var("WALLPAPER_FIXTURE_EXIT","7");
-        assert!(run("next",&settings).unwrap_err().contains("7"));
+        assert!(run("stop",&settings).unwrap_err().contains("7"));
         std::env::remove_var("WALLPAPER_FIXTURE_LOG");std::env::remove_var("WALLPAPER_FIXTURE_EXIT");
         std::fs::remove_dir_all(&dir).unwrap();
     }
