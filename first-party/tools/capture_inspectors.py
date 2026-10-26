@@ -26,7 +26,7 @@ window.WebSocket = PreviewWebSocket;
 for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant', 'googlehome', 'wallpaperengine')):
     html = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.html').read_text(encoding='utf-8')
     css = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.css').read_text(encoding='utf-8')
-    actions = ('wallpaper', 'playlist', 'next', 'profile', 'pause') if name == 'wallpaperengine' else (None,)
+    actions = ('wallpaper', 'playlist', 'next', 'profile', 'pause', 'stopplay') if name == 'wallpaperengine' else (None,)
     for language in ('en', 'fr'):
         for action in actions:
             # Self-contained page: packaged CSS and genuine inspector initialization.

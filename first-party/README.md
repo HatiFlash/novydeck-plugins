@@ -1,5 +1,11 @@
 # First-party plugins / Plugins maison
 
+## Wallpaper Engine Stop / Play — 1.0.6
+
+EN: Update Wallpaper Engine to **1.0.6**, then choose **Stop / Play (all screens)** from the installed plugin's actions. One key alternates Stop and Play; explicit commands and Pause / Play remain available. Playback state is shared locally across the plugin's keys and only changes after a successful CLI command. It is not synchronized with changes made outside the plugin. The initial state is unknown and the first press sends Stop. Windows tests use an inert CLI fixture, not a real Wallpaper Engine installation.
+
+FR : Mettez à jour Wallpaper Engine en **1.0.6**, puis choisissez **Stop / Play (all screens)** dans les actions du plugin installé. Une seule touche alterne Arrêt et Lecture ; les commandes séparées et Pause / Lecture restent disponibles. L'état est partagé localement entre les touches et ne change qu'après la réussite de la commande CLI ; il ne suit pas les modifications effectuées ailleurs. Au départ, l'état est inconnu et le premier appui envoie Arrêt. Les tests Windows emploient un exécutable témoin inerte, pas une installation Wallpaper Engine réelle.
+
 ## Macro ON/OFF / Macro ON/OFF
 
 The first-party v1.0.6 bundle includes OLED Saver 1.0.4 and the new SignalRGB Lighting 1.0.3; Google Home remains 1.0.5. The plugin store points to each plugin's own version, not to every archive in a bundle. / Le lot maison v1.0.6 contient OLED Saver 1.0.4 et le nouveau SignalRGB 1.0.3 ; Google Home reste en 1.0.5. Le magasin référence la version propre à chaque plugin, pas chaque archive du lot.
