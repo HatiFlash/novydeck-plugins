@@ -14,10 +14,14 @@ const POLL_EVERY: u32 = 5;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Mode { On, Off, Toggle }
 fn mode_checked(settings: &Value) -> Result<Mode, String> {
-    match settings["mode"].as_str() {
-        None | Some("toggle") => Ok(Mode::Toggle),
-        Some("on") => Ok(Mode::On),
-        Some("off") => Ok(Mode::Off),
+    match &settings["mode"] {
+        Value::Null => Ok(Mode::Toggle),
+        Value::String(m) => match m.as_str() {
+            "toggle" => Ok(Mode::Toggle),
+            "on" => Ok(Mode::On),
+            "off" => Ok(Mode::Off),
+            _ => Err("Invalid RivaTuner OSD mode".into()),
+        },
         _ => Err("Invalid RivaTuner OSD mode".into()),
     }
 }
