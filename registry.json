@@ -178,9 +178,9 @@
       "id": "com.novydeck.oledsaver",
       "name": "NovyDeck OLED Saver",
       "author": "NovyDeck",
-      "version": "1.0.4",
-      "description": "Cover a selected monitor with a borderless black fullscreen window; no Windows power settings changed.",
-      "description_fr": "Recouvre l'écran choisi d'une fenêtre noire sans bordure ; aucun réglage d'alimentation Windows modifié.",
+      "version": "1.1.0",
+      "description": "Cover the screens you choose (tick them, or all except the main screen) with a borderless black fullscreen window (cinema mode: ON/OFF, robust OFF, optional keep-focus); no Windows power settings changed.",
+      "description_fr": "Recouvre les écrans à masquer (à cocher, ou tous sauf le principal) d'une fenêtre noire sans bordure (mode cinéma : ON/OFF, OFF robuste, focus conservé en option) ; aucun réglage d'alimentation Windows modifié.",
       "summary": "Black fullscreen overlay",
       "summary_fr": "Fenêtre noire plein écran",
       "category": "utilities",
@@ -201,8 +201,8 @@
       "tested_decks": [],
       "min_novydeck": "0.9.0",
       "requires": "Windows 10+",
-      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.6/com.novydeck.oledsaver.streamDeckPlugin",
-      "sha256": "8c103b0e902eb81bbdee7f3f26360d462be51ca7f209daaff4aab3014d4fc073",
+      "download": "https://github.com/HatiFlash/novydeck-plugins/releases/download/first-party-v1.0.8/com.novydeck.oledsaver.streamDeckPlugin",
+      "sha256": "e2f47bcce51b939c97cd428f5b05cd46ca822cb015d50083fe46f41ed896d909",
       "icon": "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/plugins/com.novydeck.oledsaver.sdPlugin/images/plugin@2x.png",
       "screenshots": [
         "https://raw.githubusercontent.com/HatiFlash/novydeck-plugins/main/first-party/screenshots/oledsaver/keys.png"
