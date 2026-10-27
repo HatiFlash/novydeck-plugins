@@ -31,15 +31,19 @@ for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else (
         for action in actions:
             # Self-contained page: packaged CSS and genuine inspector initialization.
             page = html.replace('<link rel="stylesheet" href="inspector.css">', f'<style>{css}</style>')
-            if name in ('wallpaperengine', 'googlehome'):
+            if name in ('wallpaperengine', 'googlehome', 'oledsaver'):
                 info = json.dumps(json.dumps({'application': {'language': language}}))
                 action_info = json.dumps(json.dumps({
                     'context': 'preview',
                     'action': (f'com.novydeck.wallpaperengine.{action}' if name == 'wallpaperengine'
+                               else 'com.novydeck.oledsaver.saver' if name == 'oledsaver'
                                else 'com.novydeck.googlehome.control'),
                     'payload': {'settings': ({'scope': 'group', 'home': 'sample-home',
                                              'targets': ['sample-lamp', 'sample-fan'], 'mode': 'toggle'}
-                                            if name == 'googlehome' else {})}}))
+                                            if name == 'googlehome' else
+                                            {'mode': 'on', 'monitors': [{'name': r'\\.\DISPLAY2', 'index': 1,
+                                             'x': 2560, 'y': 0, 'w': 1920, 'h': 1080}]}
+                                            if name == 'oledsaver' else {})}}))
                 init = (FAKE_SOCKET + '\nconnectElgatoStreamDeckSocket('
                         f"0, 'preview', 'registerPropertyInspector', {info}, {action_info});")
                 if name == 'googlehome':
@@ -49,6 +53,13 @@ for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else (
                                     'rooms': [{'id': 'sample-room', 'name': 'Living room / Salon'}],
                                     'devices': [{'id': 'sample-lamp', 'name': 'Lamp / Lampe'},
                                                 {'id': 'sample-fan', 'name': 'Fan / Ventilateur'}]}]}}
+                    init += ("\nsetTimeout(() => ws.onmessage?.({data: JSON.stringify("
+                             + json.dumps(fixture) + ")}), 20);")
+                if name == 'oledsaver':
+                    fixture = {'context': 'preview', 'event': 'sendToPropertyInspector', 'payload': {'monitors': [
+                        {'index': 0, 'name': r'\\.\DISPLAY1', 'width': 2560, 'height': 1440, 'x': 0, 'y': 0, 'primary': True},
+                        {'index': 1, 'name': r'\\.\DISPLAY2', 'width': 1920, 'height': 1080, 'x': 2560, 'y': 0, 'primary': False},
+                        {'index': 2, 'name': r'\\.\DISPLAY3', 'width': 1920, 'height': 1080, 'x': -1920, 'y': 0, 'primary': False}]}}
                     init += ("\nsetTimeout(() => ws.onmessage?.({data: JSON.stringify("
                              + json.dumps(fixture) + ")}), 20);")
                 page = page.replace('</script></html>', f'</script><script>{init}</script></html>')
