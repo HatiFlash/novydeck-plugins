@@ -9,7 +9,7 @@ root = Path(__file__).resolve().parents[1]
 dist = root / "dist"
 dist.mkdir(exist_ok=True)
 checksums = []
-for name in ("clock", "counter", "sysmonitor", "nowplaying", "oledsaver", "signalrgb", "homeassistant", "googleassistant", "googlehome", "wallpaperengine"):
+for name in ("clock", "counter", "sysmonitor", "nowplaying", "oledsaver", "signalrgb", "rtssosd", "homeassistant", "googleassistant", "googlehome", "wallpaperengine"):
     plugin = root / "plugins" / f"com.novydeck.{name}.sdPlugin"
     exe = plugin / "bin" / f"novydeck-{name}.exe"
     exe.parent.mkdir(exist_ok=True)

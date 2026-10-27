@@ -23,7 +23,7 @@ class PreviewWebSocket {
 }
 window.WebSocket = PreviewWebSocket;
 '''
-for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else ('clock', 'counter', 'oledsaver', 'homeassistant', 'googleassistant', 'googlehome', 'wallpaperengine')):
+for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else ('clock', 'counter', 'oledsaver', 'rtssosd', 'homeassistant', 'googleassistant', 'googlehome', 'wallpaperengine')):
     html = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.html').read_text(encoding='utf-8')
     css = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.css').read_text(encoding='utf-8')
     actions = ('wallpaper', 'playlist', 'next', 'profile', 'pause', 'stopplay') if name == 'wallpaperengine' else (None,)
@@ -31,12 +31,13 @@ for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else (
         for action in actions:
             # Self-contained page: packaged CSS and genuine inspector initialization.
             page = html.replace('<link rel="stylesheet" href="inspector.css">', f'<style>{css}</style>')
-            if name in ('wallpaperengine', 'googlehome', 'oledsaver'):
+            if name in ('wallpaperengine', 'googlehome', 'oledsaver', 'rtssosd'):
                 info = json.dumps(json.dumps({'application': {'language': language}}))
                 action_info = json.dumps(json.dumps({
                     'context': 'preview',
                     'action': (f'com.novydeck.wallpaperengine.{action}' if name == 'wallpaperengine'
                                else 'com.novydeck.oledsaver.saver' if name == 'oledsaver'
+                               else 'com.novydeck.rtssosd.osd' if name == 'rtssosd'
                                else 'com.novydeck.googlehome.control'),
                     'payload': {'settings': ({'scope': 'group', 'home': 'sample-home',
                                              'targets': ['sample-lamp', 'sample-fan'], 'mode': 'toggle'}

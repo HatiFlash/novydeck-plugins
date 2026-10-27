@@ -12,6 +12,7 @@ LABELS = {
     "nowplaying": {"plugin": "", "play": "▶", "next": ">|", "previous": "|<"},
     "oledsaver": {"plugin": "", "saver": "OLED"},
     "signalrgb": {"plugin": "", "lighting": "RGB"},
+    "rtssosd": {"plugin": "", "osd": "OSD"},
     "homeassistant": {"plugin": "", "toggle": "HA", "service": "API", "state": "°C"},
     "googleassistant": {"plugin": "", "command": "G"},
     "googlehome": {"plugin": "", "control": "⌂"},
@@ -25,6 +26,7 @@ COLORS = {
     "nowplaying": ((177, 95, 226), (89, 52, 167)),
     "oledsaver": ((70, 103, 153), (27, 36, 85)),
     "signalrgb": ((128, 79, 189), (38, 43, 112)),
+    "rtssosd": ((226, 120, 58), (122, 40, 52)),
     "homeassistant": ((48, 173, 203), (30, 86, 154)),
     "googleassistant": ((223, 99, 137), (129, 50, 115)),
     "googlehome": ((76, 160, 142), (32, 83, 112)),
@@ -74,6 +76,10 @@ def logo(name, size):
         d.rounded_rectangle((p(27), p(37), p(117), p(100)), radius=p(9), outline=white, width=p(7))
         d.arc((p(62), p(47), p(95), p(82)), 50, 260, fill=white, width=p(6))
         d.line((p(58), p(110), p(86), p(110)), fill=white, width=p(6))
+    elif name == "rtssosd":
+        d.rounded_rectangle((p(26), p(33), p(118), p(101)), radius=p(8), outline=white, width=p(7))
+        d.line((p(38), p(85), p(55), p(85), p(64), p(62), p(76), p(88), p(86), p(70), p(106), p(70)), fill=white, width=p(6), joint="curve")
+        d.line((p(54), p(113), p(90), p(113)), fill=white, width=p(6))
     elif name == "homeassistant":
         d.polygon([(p(25), p(68)), (p(72), p(30)), (p(119), p(68)), (p(108), p(79)), (p(72), p(48)), (p(36), p(79))], fill=white)
         d.rounded_rectangle((p(39), p(73), p(105), p(111)), radius=p(4), fill=white)

@@ -1,0 +1,8 @@
+{
+  "Name":"NovyDeck RivaTuner OSD", "Description":"Show/hide the RivaTuner overlay / Afficher-masquer l'overlay RivaTuner", "Author":"NovyDeck", "Version":"1.0.0", "SDKVersion":2,
+  "CodePathWin":"bin/novydeck-rtssosd.exe", "Icon":"images/plugin-icon", "URL":"https://github.com/HatiFlash/novydeck-plugins",
+  "OS":[{"Platform":"windows","MinimumVersion":"10"}], "Software":{"MinimumVersion":"6.0"},
+  "Actions":[
+    {"UUID":"com.novydeck.rtssosd.osd","Name":"RivaTuner OSD","Tooltip":"Show/hide the RivaTuner overlay / Afficher-masquer l'overlay RivaTuner","Icon":"images/osd-icon","PropertyInspectorPath":"inspector.html","Controllers":["Keypad"],"States":[{"Image":"images/osd"}]}
+  ]
+}
