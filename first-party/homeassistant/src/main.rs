@@ -10,13 +10,17 @@ use novydeck_sdk::{Client, Event, Plugin, StateSource};
 use reqwest::{blocking::Client as Http, redirect::Policy, Url};
 use rule::{Edge, Machine, Reading, Rule};
 use serde_json::{json, Value};
+use std::sync::Arc;
 use std::{
     collections::{HashMap, HashSet},
     sync::mpsc::{self, Receiver, Sender},
     thread,
     time::{Duration, Instant},
 };
-use store::{load_config, load_token, store_config, store_token, Config};
+use store::{
+    is_cleartext, load_config, origin_of, plan_secret, store_config, test_credentials,
+    url_is_local, Config, DpapiVault, Secret, SecretPlan, Vault, INSECURE_REFUSED, MISMATCH,
+};
 
 const TOGGLE: &str = "com.novydeck.homeassistant.toggle";
 const SERVICE: &str = "com.novydeck.homeassistant.service";
@@ -87,14 +91,21 @@ fn state_label(e: &Entity) -> String {
 
 // ------------------------------------------------------------ migration 1.0.x → 1.1
 
-/// URL et option TLS étaient par touche en 1.0.x : la première touche qui en porte une les
-/// transmet au plugin si rien n'est encore configuré. Les réglages des touches restent intacts.
-fn migrated(config: &Config, key_settings: &Value) -> Option<Config> {
-    if config.configured() {
+/// URL et option TLS étaient par touche en 1.0.x : on collecte les origines vues, sans rien
+/// appliquer. Une seule origine distincte devient une suggestion que seule `saveConnection`
+/// (action de l'utilisateur) peut appliquer. Les réglages des touches restent intacts.
+fn observed(key_settings: &Value) -> Option<(String, Config)> {
+    let candidate = Config::from_value(key_settings);
+    if !candidate.configured() || endpoint(&candidate.url, "/").is_err() {
         return None;
     }
-    let candidate = Config::from_value(key_settings);
-    (candidate.configured() && endpoint(&candidate.url, "/").is_ok()).then_some(candidate)
+    Some((origin_of(&candidate.url).ok()?, candidate))
+}
+fn suggestion(config: &Config, seen: &HashMap<String, Config>) -> Option<Config> {
+    if config.configured() || seen.len() != 1 {
+        return None;
+    }
+    seen.values().next().cloned()
 }
 
 // ------------------------------------------------------------ REST (actions)
@@ -108,8 +119,13 @@ fn http(insecure: bool) -> Result<Http, &'static str> {
         .build()
         .map_err(|_| "Client HTTP indisponible")
 }
-fn request(config: &Config, token: &str, path: &str, body: Value) -> Result<(), &'static str> {
+fn request(config: &Config, secret: &Secret, path: &str, body: Value) -> Result<(), &'static str> {
     let url = endpoint(&config.url, path)?;
+    // Refus avant tout accès réseau : le jeton ne part que vers son origine liée.
+    let token = secret.token_for(&config.url)?;
+    if config.insecure && !url_is_local(&config.url) {
+        return Err(INSECURE_REFUSED);
+    }
     let response = http(config.insecure)?
         .post(url)
         .bearer_auth(token)
@@ -217,13 +233,22 @@ struct Home {
     tx: Sender<Reply>,
     rx: Receiver<Reply>,
     config: Config,
+    vault: Arc<dyn Vault>,
+    /// Écriture de `config.json` (injectable : hors Windows les tests n'ont pas de dossier de données).
+    persist: fn(&Config) -> Result<(), &'static str>,
     has_token: bool,
+    /// Jeton présent mais lié à une autre adresse que la connexion courante.
+    mismatch: bool,
+    /// Origines vues dans d'anciens réglages de touche (1.0.x), jamais appliquées seules.
+    seen: HashMap<String, Config>,
+    /// Dernier refus de `saveConnection`, affiché par l'inspecteur.
+    save_error: String,
     monitor: Monitor,
     last_status: String,
     last_tick: Instant,
 }
 impl Home {
-    fn with(config: Config, monitor: Monitor) -> Self {
+    fn with(config: Config, monitor: Monitor, vault: Arc<dyn Vault>) -> Self {
         let (tx, rx) = mpsc::channel();
         Self {
             keys: HashMap::new(),
@@ -231,7 +256,12 @@ impl Home {
             tx,
             rx,
             config,
+            vault,
+            persist: store_config,
             has_token: false,
+            mismatch: false,
+            seen: HashMap::new(),
+            save_error: String::new(),
             monitor,
             last_status: String::new(),
             last_tick: Instant::now(),
@@ -240,15 +270,27 @@ impl Home {
 }
 impl Default for Home {
     fn default() -> Self {
-        let mut home = Self::with(load_config(), Monitor::spawn());
+        let mut home = Self::with(load_config(), Monitor::spawn(), Arc::new(DpapiVault));
         home.reconfigure();
         home
     }
 }
 
-fn status_code(config: &Config, has_token: bool, status: &Status) -> &'static str {
+fn status_code(
+    config: &Config,
+    has_token: bool,
+    mismatch: bool,
+    suggested: bool,
+    status: &Status,
+) -> &'static str {
     if !config.configured() {
-        "not_configured"
+        if suggested {
+            "suggestion"
+        } else {
+            "not_configured"
+        }
+    } else if mismatch {
+        "token_mismatch"
     } else if !has_token {
         "no_token"
     } else {
@@ -263,6 +305,11 @@ fn status_code(config: &Config, has_token: bool, status: &Status) -> &'static st
 fn status_message(code: &str, status: &Status) -> String {
     match (code, status) {
         ("not_configured", _) => "Configure l'URL et le jeton dans les réglages du plugin".into(),
+        ("suggestion", _) => {
+            "Adresse détectée dans d'anciens réglages : vérifiez-la puis enregistrez la connexion"
+                .into()
+        }
+        ("token_mismatch", _) => MISMATCH.into(),
         ("no_token", _) => {
             "Enregistre le jeton d'accès Home Assistant dans les réglages du plugin".into()
         }
@@ -274,43 +321,119 @@ fn status_message(code: &str, status: &Status) -> String {
 }
 
 impl Home {
-    /// Applique URL/jeton courants à la connexion unique (jamais d'accès réseau ici).
-    fn reconfigure(&mut self) {
-        let token = load_token().ok().flatten();
-        self.has_token = token.is_some();
-        let settings = match token {
-            Some(token) if self.config.configured() && endpoint(&self.config.url, "/").is_ok() => {
-                Some(Settings {
-                    url: self.config.url.clone(),
-                    token,
-                    insecure: self.config.insecure,
-                })
-            }
-            _ => None,
-        };
-        self.monitor.configure(settings);
-    }
-    fn adopt(&mut self, key_settings: &Value) {
-        if let Some(config) = migrated(&self.config, key_settings) {
-            if store_config(&config).is_ok() {
-                self.config = config;
-                self.reconfigure();
+    /// Lit le secret ; un secrets.bin 1.1.0 (jeton seul) est lié une fois à l'origine courante.
+    fn load_secret(&self) -> Option<Secret> {
+        let mut secret = self.vault.load().ok().flatten()?;
+        if secret.origin.is_none() && self.config.configured() {
+            if let Ok(origin) = origin_of(&self.config.url) {
+                secret.origin = Some(origin);
+                let _ = self.vault.save(&secret);
             }
         }
+        Some(secret)
+    }
+    /// Applique URL/jeton courants à la connexion unique (jamais d'accès réseau ici).
+    fn reconfigure(&mut self) {
+        let secret = self.load_secret();
+        self.has_token = secret.is_some();
+        self.mismatch = false;
+        let mut settings = None;
+        if let Some(secret) = secret {
+            if self.config.configured() && endpoint(&self.config.url, "/").is_ok() {
+                match secret.token_for(&self.config.url) {
+                    Ok(token) => {
+                        settings = Some(Settings {
+                            url: self.config.url.clone(),
+                            token: token.to_owned(),
+                            insecure: self.config.insecure,
+                            bound_origin: secret.origin.clone().unwrap_or_default(),
+                        })
+                    }
+                    Err(_) => self.mismatch = true,
+                }
+            }
+        }
+        self.monitor.configure(settings);
+    }
+    /// Enregistre une origine vue dans un ancien réglage de touche (aucune application).
+    fn observe(&mut self, key_settings: &Value) {
+        if self.config.configured() {
+            return;
+        }
+        if let Some((origin, config)) = observed(key_settings) {
+            self.seen.entry(origin).or_insert(config);
+        }
+    }
+    /// Action de l'utilisateur : enregistre l'adresse et lie/invalide le jeton en conséquence.
+    fn save_connection(&mut self, payload: &Value, with_url: bool) -> Result<(), &'static str> {
+        let config = if with_url {
+            Config::from_value(payload)
+        } else {
+            self.config.clone()
+        };
+        if config.configured() && endpoint(&config.url, "/").is_err() {
+            return Err("URL invalide");
+        }
+        if config.insecure && config.configured() && !url_is_local(&config.url) {
+            return Err(INSECURE_REFUSED);
+        }
+        let value = payload["token"].as_str().unwrap_or("");
+        let provided = (!value.is_empty()
+            && value.len() <= 8_192
+            && !value.contains('\n')
+            && !value.contains('\r'))
+        .then_some(value);
+        let origin = if config.configured() {
+            origin_of(&config.url).ok()
+        } else {
+            None
+        };
+        let current = self.vault.load().ok().flatten();
+        match plan_secret(current.as_ref(), origin.as_deref(), provided) {
+            SecretPlan::Keep => {}
+            SecretPlan::Replace(secret) => self.vault.save(&secret)?,
+            SecretPlan::Clear => self.vault.clear()?,
+        }
+        if config != self.config {
+            (self.persist)(&config)?;
+            self.config = config;
+        }
+        Ok(())
     }
     fn status_payload(&self) -> Value {
         let status = self.monitor.status();
-        let code = status_code(&self.config, self.has_token, &status);
-        json!({"type":"status", "code":code, "message":status_message(code, &status), "connected":code == "connected",
-            "configured":self.config.configured(), "hasToken":self.has_token,
-            "url":self.config.url, "insecure":self.config.insecure})
+        let suggested = suggestion(&self.config, &self.seen);
+        let code = status_code(
+            &self.config,
+            self.has_token,
+            self.mismatch,
+            suggested.is_some(),
+            &status,
+        );
+        let cleartext = if !is_cleartext(&self.config.url) {
+            "none"
+        } else if url_is_local(&self.config.url) {
+            "local"
+        } else {
+            "public"
+        };
+        let mut payload = json!({"type":"status", "code":code, "message":status_message(code, &status), "connected":code == "connected",
+            "configured":self.config.configured(), "hasToken":self.has_token && !self.mismatch,
+            "tokenMismatch":self.mismatch, "cleartext":cleartext,
+            "insecureRefused": self.config.insecure && self.config.configured() && !url_is_local(&self.config.url),
+            "saveError":self.save_error,
+            "url":self.config.url, "insecure":self.config.insecure});
+        if let Some(s) = suggested {
+            payload["suggestion"] = json!({"url":s.url, "insecure":s.insecure});
+        }
+        payload
     }
     fn send_status(&self, ctx: &str, sdk: &mut Client) -> Result<(), String> {
         sdk.inspector(ctx, self.status_payload())
     }
     fn list_payload(&self) -> Value {
         let status = self.monitor.status();
-        let code = status_code(&self.config, self.has_token, &status);
+        let code = status_code(&self.config, self.has_token, self.mismatch, false, &status);
         if code != "connected" {
             return json!({"op":"list", "type":"list", "status":"error", "code":code, "message":status_message(code, &status), "entities":[]});
         }
@@ -375,7 +498,7 @@ impl Home {
             },
         })
     }
-    fn schedule(&mut self, ctx: &str, job: Job, test: Option<Config>) {
+    fn schedule(&mut self, ctx: &str, job: Job, test: Option<(Config, Option<String>)>) {
         let Some(key) = self.keys.get_mut(ctx) else {
             return;
         };
@@ -384,28 +507,40 @@ impl Home {
         }
         key.pending = true;
         let settings = key.settings.clone();
-        let config = test.unwrap_or_else(|| self.config.clone());
+        let (config, provided) = test.unwrap_or_else(|| (self.config.clone(), None));
+        let vault = self.vault.clone();
         let sender = self.tx.clone();
         let context = ctx.to_owned();
         thread::spawn(move || {
             let result = (|| -> Result<usize, String> {
-                let token = load_token().map_err(str::to_owned)?.ok_or("Non connecté")?;
+                let stored = vault.load().map_err(str::to_owned)?;
                 match job {
-                    Job::Test => live::test_connection(
-                        &Settings {
-                            url: config.url,
-                            token,
-                            insecure: config.insecure,
-                        },
-                        Duration::from_secs(8),
-                    ),
+                    Job::Test => {
+                        let secret = test_credentials(
+                            &config.url,
+                            config.insecure,
+                            stored.as_ref(),
+                            provided.as_deref(),
+                        )?;
+                        live::test_connection(
+                            &Settings {
+                                url: config.url,
+                                token: secret.token,
+                                insecure: config.insecure,
+                                bound_origin: secret.origin.unwrap_or_default(),
+                            },
+                            Duration::from_secs(8),
+                        )
+                    }
                     Job::Toggle => {
+                        let secret = stored.ok_or("Non connecté")?;
                         let body = service_body(&settings)?;
-                        request(&config, &token, "/api/services/homeassistant/toggle", body)
+                        request(&config, &secret, "/api/services/homeassistant/toggle", body)
                             .map(|_| 0)
                             .map_err(str::to_owned)
                     }
                     Job::Service => {
+                        let secret = stored.ok_or("Non connecté")?;
                         let domain = settings["domain"].as_str().unwrap_or("");
                         let service = settings["service"].as_str().unwrap_or("");
                         if !identifier(domain) || !identifier(service) {
@@ -414,7 +549,7 @@ impl Home {
                         let body = service_body(&settings)?;
                         request(
                             &config,
-                            &token,
+                            &secret,
                             &format!("/api/services/{domain}/{service}"),
                             body,
                         )
@@ -451,7 +586,7 @@ impl Plugin for Home {
         let ctx = event.context.clone();
         match event.name.as_str() {
             "willAppear" => {
-                self.adopt(event.settings());
+                self.observe(event.settings());
                 self.insert_key(&ctx, &event.action, event.settings());
                 self.draw(&ctx, sdk)?;
             }
@@ -459,7 +594,7 @@ impl Plugin for Home {
                 self.keys.remove(&ctx);
             }
             "didReceiveSettings" => {
-                self.adopt(event.settings());
+                self.observe(event.settings());
                 let settings = safe_settings(event.settings());
                 if let Some(key) = self.keys.get_mut(&ctx) {
                     if key.action == AUTO && key.settings != settings {
@@ -483,29 +618,19 @@ impl Plugin for Home {
                 let op = event.payload["op"].as_str().unwrap_or("");
                 match op {
                     "saveToken" | "saveConnection" => {
-                        if op == "saveConnection" {
-                            let config = Config::from_value(&event.payload);
-                            if config.url.is_empty() || endpoint(&config.url, "/").is_ok() {
-                                if config != self.config && store_config(&config).is_ok() {
-                                    self.config = config;
-                                }
-                            }
-                        }
-                        let value = event.payload["token"].as_str().unwrap_or("");
-                        if !value.is_empty()
-                            && value.len() <= 8_192
-                            && !value.contains('\n')
-                            && !value.contains('\r')
-                        {
-                            let _ = store_token(value);
-                        }
+                        self.save_error =
+                            match self.save_connection(&event.payload, op == "saveConnection") {
+                                Ok(()) => String::new(),
+                                Err(e) => e.to_owned(),
+                            };
                         self.reconfigure();
                         self.send_status(&ctx, sdk)?;
                     }
                     "status" => self.send_status(&ctx, sdk)?,
                     "list" => sdk.inspector(&ctx, self.list_payload())?,
                     "test" => {
-                        // Teste l'adresse saisie (même non enregistrée) avec le jeton enregistré.
+                        // Adresse saisie (même non enregistrée) : jeton enregistré seulement si son
+                        // origine est celle liée, sinon jeton fourni dans ce message (non enregistré).
                         let candidate = Config::from_value(&event.payload);
                         let candidate = if candidate.configured() {
                             candidate
@@ -518,7 +643,12 @@ impl Plugin for Home {
                                 json!({"type":"test", "ok":false, "message":"URL invalide"}),
                             )?;
                         } else {
-                            self.schedule(&ctx, Job::Test, Some(candidate));
+                            let provided = event.payload["token"]
+                                .as_str()
+                                .map(str::trim)
+                                .filter(|t| !t.is_empty() && t.len() <= 8_192)
+                                .map(str::to_owned);
+                            self.schedule(&ctx, Job::Test, Some((candidate, provided)));
                         }
                     }
                     _ => {}
@@ -659,38 +789,185 @@ mod tests {
         assert_eq!(safe["refresh"], 2);
         assert_eq!(safe["url"], "http://ha:8123");
     }
-    #[test]
-    fn migration_from_per_key_settings() {
-        let none = Config::default();
-        let old = json!({"url":" http://ha.local:8123 ", "insecure":true, "entity":"light.a"});
-        assert_eq!(
-            migrated(&none, &old),
-            Some(Config {
-                url: "http://ha.local:8123".into(),
-                insecure: true
-            })
-        );
-        assert_eq!(migrated(&none, &json!({"entity":"light.a"})), None);
-        assert_eq!(
-            migrated(&none, &json!({"url":"ftp://x"})),
-            None,
-            "URL invalide non migrée"
-        );
-        let set = Config {
-            url: "http://other:8123".into(),
+    #[derive(Default)]
+    struct MemVault(std::sync::Mutex<Option<Secret>>);
+    impl Vault for MemVault {
+        fn load(&self) -> Result<Option<Secret>, &'static str> {
+            Ok(self.0.lock().unwrap().clone())
+        }
+        fn save(&self, s: &Secret) -> Result<(), &'static str> {
+            *self.0.lock().unwrap() = Some(s.clone());
+            Ok(())
+        }
+        fn clear(&self) -> Result<(), &'static str> {
+            *self.0.lock().unwrap() = None;
+            Ok(())
+        }
+    }
+    fn home_with(config: Config, secret: Option<Secret>) -> (Home, Arc<MemVault>) {
+        let vault = Arc::new(MemVault(std::sync::Mutex::new(secret)));
+        let mut home = Home::with(config, Monitor::inert(), vault.clone());
+        home.persist = |_| Ok(());
+        (home, vault)
+    }
+    fn secret(origin: Option<&str>) -> Secret {
+        Secret {
+            token: "tok".into(),
+            origin: origin.map(str::to_owned),
+        }
+    }
+    fn cfg(url: &str) -> Config {
+        Config {
+            url: url.into(),
             insecure: false,
-        };
+        }
+    }
+
+    #[test]
+    fn migration_collects_origins_and_never_adopts() {
+        let (mut home, _) = home_with(Config::default(), None);
+        home.observe(&json!({"url":" http://ha.local:8123 ", "insecure":true, "entity":"light.a"}));
+        home.observe(&json!({"entity":"light.b"}));
+        home.observe(&json!({"url":"ftp://x"}));
+        home.observe(&json!({"url":"http://HA.local:8123/", "entity":"light.c"}));
+        assert_eq!(home.config, Config::default(), "rien n'est appliqué");
+        let p = home.status_payload();
+        assert_eq!(p["code"], "suggestion");
+        assert_eq!(p["suggestion"]["url"], "http://ha.local:8123");
+        assert_eq!(p["configured"], false);
+        // Deux origines distinctes : aucune suggestion, aucune adoption.
+        home.observe(&json!({"url":"http://autre.local:8123"}));
+        let p = home.status_payload();
+        assert_eq!(p["code"], "not_configured");
+        assert!(p.get("suggestion").is_none());
+        assert_eq!(home.config, Config::default());
+        // Une configuration existante n'est jamais écrasée ni suggérée.
+        let (mut set, _) = home_with(cfg("http://other:8123"), None);
+        set.observe(&json!({"url":"http://ha.local:8123"}));
+        assert!(set.seen.is_empty());
+        // Les réglages de touche gardent leur ancienne URL.
         assert_eq!(
-            migrated(&set, &old),
-            None,
-            "la configuration globale existante n'est jamais écrasée"
+            safe_settings(&json!({"url":"http://a:1"}))["url"],
+            "http://a:1"
+        );
+    }
+    #[test]
+    fn two_keys_with_different_origins_adopt_nothing() {
+        let (mut home, vault) = home_with(Config::default(), Some(secret(None)));
+        home.observe(&json!({"url":"http://a.local:8123"}));
+        home.observe(&json!({"url":"http://b.local:8123"}));
+        assert!(suggestion(&home.config, &home.seen).is_none());
+        assert_eq!(vault.load().unwrap().unwrap().origin, None);
+    }
+    #[test]
+    fn save_to_a_new_origin_without_token_invalidates_the_token() {
+        let (mut home, vault) = home_with(
+            cfg("http://192.168.1.2:8123"),
+            Some(secret(Some("http://192.168.1.2:8123"))),
+        );
+        // Même origine : jeton conservé.
+        assert_eq!(
+            home.save_connection(&json!({"url":"http://192.168.1.2:8123/"}), true),
+            Ok(())
+        );
+        assert!(vault.load().unwrap().is_some());
+        // Nouvelle origine sans jeton : effacé.
+        assert_eq!(
+            home.save_connection(&json!({"url":"http://192.168.1.9:8123"}), true),
+            Ok(())
+        );
+        assert_eq!(vault.load().unwrap(), None, "jeton invalidé");
+        assert_eq!(home.config.url, "http://192.168.1.9:8123");
+        // Avec jeton : lié à la nouvelle origine.
+        assert_eq!(
+            home.save_connection(
+                &json!({"url":"http://192.168.1.7:8123", "token":"new"}),
+                true
+            ),
+            Ok(())
+        );
+        let s = vault.load().unwrap().unwrap();
+        assert_eq!(
+            (s.token.as_str(), s.origin.as_deref()),
+            ("new", Some("http://192.168.1.7:8123"))
+        );
+    }
+    #[test]
+    fn legacy_secret_is_bound_once_to_the_current_origin() {
+        let (mut home, vault) = home_with(cfg("http://192.168.1.2:8123"), Some(secret(None)));
+        home.reconfigure();
+        assert!(home.has_token && !home.mismatch);
+        assert_eq!(
+            vault.load().unwrap().unwrap().origin.as_deref(),
+            Some("http://192.168.1.2:8123")
+        );
+    }
+    #[test]
+    fn mismatched_secret_is_reported_and_not_used() {
+        let (mut home, _) = home_with(
+            cfg("http://192.168.1.2:8123"),
+            Some(secret(Some("http://10.0.0.1:8123"))),
+        );
+        home.reconfigure();
+        assert!(home.mismatch);
+        let p = home.status_payload();
+        assert_eq!(p["code"], "token_mismatch");
+        assert_eq!(p["message"], MISMATCH);
+        assert_eq!(p["hasToken"], false);
+    }
+    #[test]
+    fn insecure_is_refused_on_a_public_host() {
+        let (mut home, vault) = home_with(Config::default(), None);
+        let r = home.save_connection(
+            &json!({"url":"https://ha.example.org", "insecure":true, "token":"t"}),
+            true,
+        );
+        assert_eq!(r, Err(INSECURE_REFUSED));
+        assert_eq!(home.config, Config::default());
+        assert_eq!(vault.load().unwrap(), None, "rien n'est enregistré");
+        home.save_error = INSECURE_REFUSED.into();
+        assert_eq!(home.status_payload()["saveError"], INSECURE_REFUSED);
+        // Hôte local : accepté.
+        assert_eq!(
+            home.save_connection(
+                &json!({"url":"https://192.168.1.2:8123", "insecure":true}),
+                true
+            ),
+            Ok(())
+        );
+        assert!(home.config.insecure);
+    }
+    #[test]
+    fn request_to_another_origin_is_refused_without_network() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let config = cfg(&format!("http://127.0.0.1:{port}"));
+        let other = secret(Some("http://autre.local:8123"));
+        assert_eq!(
+            request(&config, &other, "/api/services/light/toggle", json!({})),
+            Err(MISMATCH)
+        );
+        assert_eq!(
+            request(
+                &config,
+                &secret(None),
+                "/api/services/light/toggle",
+                json!({})
+            ),
+            Err(MISMATCH)
+        );
+        std::thread::sleep(Duration::from_millis(150));
+        assert!(
+            listener.accept().is_err(),
+            "le serveur témoin ne reçoit aucune connexion"
         );
     }
     #[test]
     fn status_messages_explain_the_cause() {
         let none = Config::default();
         assert_eq!(
-            status_code(&none, false, &Status::Disabled),
+            status_code(&none, false, false, false, &Status::Disabled),
             "not_configured"
         );
         assert!(status_message("not_configured", &Status::Disabled)
@@ -699,15 +976,20 @@ mod tests {
             url: "http://ha:8123".into(),
             insecure: false,
         };
-        assert_eq!(status_code(&cfg, false, &Status::Disabled), "no_token");
         assert_eq!(
-            status_code(&cfg, true, &Status::AuthFailed("x".into())),
+            status_code(&cfg, false, false, false, &Status::Disabled),
+            "no_token"
+        );
+        assert_eq!(
+            status_code(&cfg, true, false, false, &Status::AuthFailed("x".into())),
             "auth_failed"
         );
         assert_eq!(
             status_code(
                 &cfg,
                 true,
+                false,
+                false,
                 &Status::Reconnecting {
                     attempt: 1,
                     error: "e".into()
@@ -715,11 +997,18 @@ mod tests {
             ),
             "reconnecting"
         );
-        assert_eq!(status_code(&cfg, true, &Status::Connected), "connected");
+        assert_eq!(
+            status_code(&cfg, true, false, false, &Status::Connected),
+            "connected"
+        );
     }
     #[test]
     fn disconnected_list_is_an_explained_error_and_never_has_a_token() {
-        let home = Home::with(Config::default(), Monitor::inert());
+        let home = Home::with(
+            Config::default(),
+            Monitor::inert(),
+            Arc::new(MemVault::default()),
+        );
         let list = home.list_payload();
         assert_eq!(list["status"], "error");
         assert_eq!(list["entities"], json!([]));

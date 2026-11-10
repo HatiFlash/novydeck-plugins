@@ -41,6 +41,8 @@ pub struct Settings {
     pub url: String,
     pub token: String,
     pub insecure: bool,
+    /// Origine pour laquelle le jeton a été saisi : le jeton n'est jamais envoyé ailleurs.
+    pub bound_origin: String,
 }
 impl fmt::Debug for Settings {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -48,6 +50,7 @@ impl fmt::Debug for Settings {
             .field("url", &self.url)
             .field("token", &"***")
             .field("insecure", &self.insecure)
+            .field("bound_origin", &self.bound_origin)
             .finish()
     }
 }
@@ -274,6 +277,15 @@ fn tls_config(insecure: bool) -> Res<Arc<rustls::ClientConfig>> {
 
 /// Ouvre la connexion et s'authentifie.
 fn open(settings: &Settings, timeout: Duration) -> Res<Socket> {
+    // Avant toute résolution ou connexion : le jeton ne quitte jamais son origine liée.
+    if crate::store::origin_of(&settings.url).ok().as_deref()
+        != Some(settings.bound_origin.as_str())
+    {
+        return Err(Fail::other(crate::store::MISMATCH));
+    }
+    if settings.insecure && !crate::store::url_is_local(&settings.url) {
+        return Err(Fail::other(crate::store::INSECURE_REFUSED));
+    }
     let url = websocket_url(&settings.url).map_err(Fail::other)?;
     let host = url
         .host_str()
@@ -634,6 +646,7 @@ mod tests {
             url: format!("http://127.0.0.1:{port}"),
             token: token.into(),
             insecure: false,
+            bound_origin: format!("http://127.0.0.1:{port}"),
         }
     }
 
@@ -716,6 +729,7 @@ mod tests {
         let s = Settings {
             url: "http://ha:8123".into(),
             token: "jeton-super-secret".into(),
+            bound_origin: "http://h:1".into(),
             insecure: false,
         };
         assert!(!format!("{s:?}").contains("super-secret"));
@@ -835,6 +849,45 @@ mod tests {
         let err = test_connection(&settings(f.port, "bad-token-XYZ"), Duration::from_secs(3))
             .unwrap_err();
         assert!(err.contains("refusé") && !err.contains("XYZ"), "{err}");
+    }
+    /// Serveur témoin brut : compte les connexions TCP reçues.
+    fn counting_listener() -> (u16, Arc<AtomicUsize>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let hits = Arc::new(AtomicUsize::new(0));
+        let h = hits.clone();
+        std::thread::spawn(move || {
+            for _ in listener.incoming() {
+                h.fetch_add(1, Ordering::SeqCst);
+            }
+        });
+        (port, hits)
+    }
+    #[test]
+    fn token_is_never_sent_to_another_origin() {
+        let (port, hits) = counting_listener();
+        let mut s = settings(port, "good-token");
+        s.bound_origin = "http://autre-hote.local:8123".into();
+        let err = test_connection(&s, Duration::from_secs(1)).unwrap_err();
+        assert_eq!(err, crate::store::MISMATCH);
+        let monitor = Monitor::spawn_with(FAST);
+        monitor.configure(Some(s));
+        wait("refus", || {
+            matches!(monitor.status(), Status::Reconnecting { .. })
+        });
+        std::thread::sleep(Duration::from_millis(200));
+        assert_eq!(hits.load(Ordering::SeqCst), 0, "aucune connexion reçue");
+    }
+    #[test]
+    fn insecure_is_refused_for_a_public_host_without_network() {
+        let mut s = settings(1, "t");
+        s.url = "https://ha.example.org".into();
+        s.bound_origin = "https://ha.example.org:443".into();
+        s.insecure = true;
+        assert_eq!(
+            test_connection(&s, Duration::from_secs(1)).unwrap_err(),
+            crate::store::INSECURE_REFUSED
+        );
     }
     #[test]
     fn live_events_reconnect_and_reload_states() {
