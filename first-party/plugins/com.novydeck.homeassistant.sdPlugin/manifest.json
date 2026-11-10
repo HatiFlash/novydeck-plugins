@@ -1,8 +1,8 @@
 {
   "Name": "NovyDeck Home Assistant",
-  "Description": "Home Assistant entity control and state / Commande et état Home Assistant",
+  "Description": "Home Assistant entity control, state and automatic state rule / Commande, état et règle d’état automatique Home Assistant",
   "Author": "NovyDeck",
-  "Version": "1.0.3",
+  "Version": "1.1.1",
   "SDKVersion": 2,
   "CodePathWin": "bin/novydeck-homeassistant.exe",
   "Icon": "images/plugin-icon",
@@ -12,6 +12,7 @@
   "Actions": [
     {"UUID":"com.novydeck.homeassistant.toggle", "Name":"Toggle entity", "Tooltip":"Toggle entity / Basculer une entité", "Icon":"images/toggle-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/toggle"}]},
     {"UUID":"com.novydeck.homeassistant.service", "Name":"Call service", "Tooltip":"Call service / Appeler un service", "Icon":"images/service-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/service"}]},
-    {"UUID":"com.novydeck.homeassistant.state", "Name":"Display state", "Tooltip":"Display state / Afficher un état", "Icon":"images/state-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/state"}]}
+    {"UUID":"com.novydeck.homeassistant.state", "Name":"Display state", "Tooltip":"Display state / Afficher un état", "Icon":"images/state-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/state"}]},
+    {"UUID":"com.novydeck.homeassistant.auto", "Name":"Automatic state", "Tooltip":"Automatic state rule (needs NovyDeck 0.19.1+) / Règle d’état automatique (NovyDeck 0.19.1+ requis)", "Icon":"images/state-icon", "PropertyInspectorPath":"inspector.html", "Controllers":["Keypad"], "States":[{"Image":"images/state"},{"Image":"images/state"}]}
   ]
 }

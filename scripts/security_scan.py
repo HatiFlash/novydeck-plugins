@@ -100,13 +100,20 @@ def inspect_archive(data, directory, plugin):
                     any(part in ('..', '.') or ':' in part for part in parts) or name.startswith('/') or
                     (info.external_attr >> 16) & 0o170000 == 0o120000):
                 raise ValueError(f'Unsafe archive member: {name[:120]}')
-            unpacked += info.file_size
-            if unpacked > MAX_UNPACKED:
-                raise ValueError('Unpacked archive exceeds 200 MiB')
             dest = directory.joinpath(*parts)
             dest.parent.mkdir(parents=True, exist_ok=True)
+            # Count bytes actually decompressed: the size declared in the zip header can lie.
             with archive.open(info) as source, dest.open('wb') as target:
-                shutil.copyfileobj(source, target)
+                written = 0
+                while True:
+                    chunk = source.read(min(1024 * 1024, MAX_UNPACKED - unpacked + 1))
+                    if not chunk:
+                        break
+                    unpacked += len(chunk)
+                    written += len(chunk)
+                    if unpacked > MAX_UNPACKED or written > MAX_ARCHIVE:
+                        raise ValueError('Unpacked archive exceeds 200 MiB')
+                    target.write(chunk)
             suffix = dest.suffix.lower()
             if suffix in BINARY_SUFFIXES:
                 status = signature(dest)
