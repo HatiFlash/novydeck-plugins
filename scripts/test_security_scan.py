@@ -53,6 +53,18 @@ class SecurityScanTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 scan.inspect_archive(data, Path(folder), self.plugin)
 
+    def test_unpacked_limit_counts_real_bytes(self):
+        # The cap is enforced on bytes actually written, not only on header metadata.
+        data = self.archive({'big.bin': b'\0' * 4096})
+        old = scan.MAX_UNPACKED
+        scan.MAX_UNPACKED = 1024
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                with self.assertRaises(ValueError):
+                    scan.inspect_archive(data, Path(folder), self.plugin)
+        finally:
+            scan.MAX_UNPACKED = old
+
 
 if __name__ == '__main__':
     unittest.main()
