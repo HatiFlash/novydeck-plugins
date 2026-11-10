@@ -248,7 +248,7 @@
       "id": "com.novydeck.homeassistant",
       "name": "NovyDeck Home Assistant",
       "author": "NovyDeck",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Control Home Assistant entities, call services, display sensor states and drive keys from a live automatic state rule.",
       "description_fr": "Commandez les entités Home Assistant, appelez des services, affichez les états des capteurs et pilotez des touches par une règle d’état automatique en direct.",
       "summary": "Home Assistant control and states",
