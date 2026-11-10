@@ -14,3 +14,10 @@ jobs:
         with:
           python-version: '3.12'
       - run: python scripts/validate.py --download
+  signature:
+    # S-02 : NovyDeck 0.19.3+ refuse un catalogue dont la signature ne correspond pas.
+    # Sur une PR qui modifie registry.json, l'échec signale que le mainteneur doit re-signer avant fusion.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: bash scripts/verify-registry-signature.sh
