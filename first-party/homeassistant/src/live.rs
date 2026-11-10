@@ -208,7 +208,7 @@ fn read_text(ws: &mut Socket) -> Res<Option<String>> {
     }
 }
 fn send(ws: &mut Socket, value: Value) -> Res<()> {
-    ws.send(Message::Text(value.to_string().into()))
+    ws.send(Message::Text(value.to_string()))
         .map_err(|_| Fail::other("Envoi vers Home Assistant impossible"))
 }
 
@@ -763,7 +763,7 @@ mod tests {
                     let Ok(mut ws) = tungstenite::accept(stream) else {
                         return;
                     };
-                    let text = |v: Value| Message::Text(v.to_string().into());
+                    let text = |v: Value| Message::Text(v.to_string());
                     ws.send(text(json!({"type":"auth_required","ha_version":"test"})))
                         .unwrap();
                     let auth: Value =

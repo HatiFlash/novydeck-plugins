@@ -67,7 +67,7 @@ impl Client {
         self.send(unknown_state_message(context))
     }
     pub fn send(&mut self, value: Value) -> Result<(), String> {
-        self.ws.send(Message::Text(value.to_string().into())).map_err(|e| e.to_string())
+        self.ws.send(Message::Text(value.to_string())).map_err(|e| e.to_string())
     }
     pub fn title(&mut self, context: &str, title: &str) -> Result<(), String> {
         self.send(json!({"event":"setTitle", "context":context, "payload":{"title": title, "target":0}}))
