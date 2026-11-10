@@ -2,7 +2,7 @@
   "Name": "NovyDeck Home Assistant",
   "Description": "Home Assistant entity control, state and automatic state rule / Commande, état et règle d’état automatique Home Assistant",
   "Author": "NovyDeck",
-  "Version": "1.1.0",
+  "Version": "1.1.1",
   "SDKVersion": 2,
   "CodePathWin": "bin/novydeck-homeassistant.exe",
   "Icon": "images/plugin-icon",
