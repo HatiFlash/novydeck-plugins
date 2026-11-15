@@ -150,7 +150,37 @@
     return null;
   }
 
-  const api = { TABLE, CUSTOM, GROUP, domainOf, forDomain, byId, first, serviceDomain, isEmpty, label, validate, build, match };
+  /** Action « Basculer une entité » : mêmes préréglages que « Appeler un service » mais « Basculer »
+      toujours en premier (défaut) et jamais de « Personnalisé ». Domaine sans préréglage (inconnu) :
+      Basculer via homeassistant.toggle. Domaine sans toggle natif (store, lecteur…) : ses préréglages. */
+  const GENERIC_TOGGLE = { id: 'toggle', domain: 'homeassistant', service: 'toggle', svc: null, label: L('Toggle', 'Basculer') };
+  function toggleChoices(dom) {
+    const list = forDomain(dom).slice();
+    if (!list.length) return [GENERIC_TOGGLE];
+    const i = list.findIndex((p) => p.id === 'toggle');
+    if (i > 0) list.unshift(list.splice(i, 1)[0]);
+    return list;
+  }
+
+  /** Quelles cartes / champs pour quelle action (fonction pure, testée sans DOM).
+      kind : auto | toggle | state | service (toute autre valeur = service, comme avant 1.2.1). */
+  const ACTIONS = { auto: 'com.novydeck.homeassistant.auto', toggle: 'com.novydeck.homeassistant.toggle', state: 'com.novydeck.homeassistant.state', service: 'com.novydeck.homeassistant.service' };
+  function layout(action) {
+    const kind = action === ACTIONS.auto ? 'auto' : action === ACTIONS.toggle ? 'toggle' : action === ACTIONS.state ? 'state' : 'service';
+    return {
+      kind,
+      autoCard: kind === 'auto',
+      serviceCard: kind !== 'auto',
+      target: kind !== 'auto',
+      title: kind === 'toggle' ? 'toggleTitle' : kind === 'state' ? 'stateTitle' : 'serviceTitle',
+      presets: kind === 'toggle' || kind === 'service',
+      custom: kind === 'service',
+      help: kind === 'service',
+      refresh: kind !== 'auto',
+    };
+  }
+
+  const api = { TABLE, CUSTOM, GROUP, ACTIONS, GENERIC_TOGGLE, domainOf, forDomain, byId, first, serviceDomain, isEmpty, label, validate, build, match, toggleChoices, layout };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.HAPresets = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -59,7 +59,7 @@ fn endpoint(base: &str, path: &str) -> Result<Url, &'static str> {
 fn safe_settings(settings: &Value) -> Value {
     let text = |k: &str| settings[k].as_str().unwrap_or("").to_owned();
     json!({"url": text("url"), "entity": text("entity"), "domain": text("domain"), "service": text("service"),
-        "data": text("data"), "group": text("group"), "refresh": settings["refresh"].as_u64().unwrap_or(10).clamp(2, 300),
+        "data": text("data"), "command": text("command"), "group": text("group"), "refresh": settings["refresh"].as_u64().unwrap_or(10).clamp(2, 300),
         "insecure": settings["insecure"].as_bool().unwrap_or(false),
         "attribute": text("attribute"), "op": text("op"), "value": text("value"),
         "hold_seconds": settings["hold_seconds"].clone(), "fire_at_start": settings["fire_at_start"].as_bool().unwrap_or(false)})
@@ -160,6 +160,36 @@ struct Plan {
     ids: Vec<String>,
     domain_service: Option<(&'static str, &'static str)>,
 }
+/// Touche « Basculer une entité » (1.2.1) : `command` = identifiant du préréglage choisi dans
+/// l'inspecteur. Absent ou `toggle` = basculement historique (les éventuels domain/service
+/// résiduels des anciennes touches sont ignorés) ; toute autre valeur = appel du service
+/// domain/service enregistré avec le préréglage.
+fn toggle_runs_service(settings: &Value) -> bool {
+    let command = settings["command"].as_str().unwrap_or("").trim();
+    !command.is_empty() && command != "toggle"
+}
+/// Chemin d'API et corps de la requête pour une touche Basculer / Appeler un service.
+fn service_call(job: Job, settings: &Value, plan: &Plan) -> Result<(String, Value), &'static str> {
+    let body = service_body_for(settings, &plan.ids)?;
+    if job == Job::Toggle && !toggle_runs_service(settings) {
+        let path = match plan.domain_service {
+            Some((d, svc)) => format!("/api/services/{d}/{svc}"),
+            None => "/api/services/homeassistant/toggle".to_owned(),
+        };
+        return Ok((path, body));
+    }
+    let (mut domain, mut service) = (
+        settings["domain"].as_str().unwrap_or(""),
+        settings["service"].as_str().unwrap_or(""),
+    );
+    if !identifier(domain) || !identifier(service) {
+        return Err("Service invalide");
+    }
+    if let Some((d, svc)) = plan.domain_service {
+        (domain, service) = (d, svc);
+    }
+    Ok((format!("/api/services/{domain}/{service}"), body))
+}
 fn plan(
     job: Job,
     settings: &Value,
@@ -169,7 +199,7 @@ fn plan(
     let ids = resolve_targets(settings, groups)?;
     let is_group = !settings["group"].as_str().unwrap_or("").is_empty();
     let toggle = match job {
-        Job::Toggle => true,
+        Job::Toggle => !toggle_runs_service(settings),
         Job::Service => {
             settings["domain"].as_str() == Some("homeassistant")
                 && settings["service"].as_str() == Some("toggle")
@@ -763,40 +793,12 @@ impl Home {
                             Duration::from_secs(8),
                         )
                     }
-                    Job::Toggle => {
+                    Job::Toggle | Job::Service => {
                         let secret = stored.ok_or("Non connecté")?;
-                        let plan = prepared?;
-                        let body = service_body_for(&settings, &plan.ids)?;
-                        let path = match plan.domain_service {
-                            Some((d, svc)) => format!("/api/services/{d}/{svc}"),
-                            None => "/api/services/homeassistant/toggle".to_owned(),
-                        };
+                        let (path, body) = service_call(job, &settings, &prepared?)?;
                         request(&config, &secret, &path, body)
                             .map(|_| 0)
                             .map_err(str::to_owned)
-                    }
-                    Job::Service => {
-                        let secret = stored.ok_or("Non connecté")?;
-                        let (mut domain, mut service) = (
-                            settings["domain"].as_str().unwrap_or(""),
-                            settings["service"].as_str().unwrap_or(""),
-                        );
-                        if !identifier(domain) || !identifier(service) {
-                            return Err("Service invalide".into());
-                        }
-                        let plan = prepared?;
-                        if let Some((d, svc)) = plan.domain_service {
-                            (domain, service) = (d, svc);
-                        }
-                        let body = service_body_for(&settings, &plan.ids)?;
-                        request(
-                            &config,
-                            &secret,
-                            &format!("/api/services/{domain}/{service}"),
-                            body,
-                        )
-                        .map(|_| 0)
-                        .map_err(str::to_owned)
                     }
                 }
             })();
@@ -1177,6 +1179,83 @@ mod tests {
                 .unwrap()
                 .domain_service,
             None
+        );
+    }
+    #[test]
+    fn toggle_ignores_stale_service_fields_and_runs_chosen_command() {
+        let groups = vec![grp(&["light.a", "switch.b"])];
+        let off = |_: &str| None;
+        let plan_of = |s: Value| plan(Job::Toggle, &s, &groups, &off).unwrap();
+        // ancienne touche Toggle : domain/service saisis à tort sont ignorés
+        let stale = json!({"entity":"light.a", "domain":"light", "service":"turn_off"});
+        assert!(!toggle_runs_service(&stale));
+        assert_eq!(plan_of(stale).domain_service, None);
+        assert!(!toggle_runs_service(
+            &json!({"entity":"light.a", "command":"toggle", "domain":"light", "service":"turn_off"})
+        ));
+        // commande explicite : service du préréglage, cible validée comme Job::Service
+        let cmd =
+            json!({"entity":"light.a", "command":"off", "domain":"light", "service":"turn_off"});
+        assert!(toggle_runs_service(&cmd));
+        let p = plan_of(cmd.clone());
+        assert_eq!(
+            (p.ids, p.domain_service),
+            (vec!["light.a".to_string()], None)
+        );
+        assert_eq!(
+            service_body_for(&cmd, &["light.a".into()]).unwrap(),
+            json!({"entity_id":"light.a"})
+        );
+        assert!(plan(
+            Job::Toggle,
+            &json!({"entity":"bad", "command":"off"}),
+            &groups,
+            &off
+        )
+        .is_err());
+        // groupe : Tout allumer sans lecture d'état ; Basculer garde la sémantique du groupe
+        let all_on =
+            json!({"group":"g1", "command":"on", "domain":"homeassistant", "service":"turn_on"});
+        let p = plan_of(all_on);
+        assert_eq!(p.ids, vec!["light.a", "switch.b"]);
+        assert_eq!(p.domain_service, None);
+        let seen = |id: &str| if id == "light.a" { st("on") } else { st("off") };
+        let tg =
+            json!({"group":"g1", "command":"toggle", "domain":"homeassistant", "service":"toggle"});
+        assert_eq!(
+            plan(Job::Toggle, &tg, &groups, &seen)
+                .unwrap()
+                .domain_service,
+            Some(("homeassistant", "turn_off"))
+        );
+        assert_eq!(safe_settings(&json!({"command":"off"}))["command"], "off");
+        // chemins d'API réellement appelés
+        let call = |s: &Value| {
+            let pl = plan(Job::Toggle, s, &groups, &seen).unwrap();
+            service_call(Job::Toggle, s, &pl).unwrap().0
+        };
+        assert_eq!(
+            call(&json!({"entity":"light.a", "domain":"light", "service":"turn_off"})),
+            "/api/services/homeassistant/toggle"
+        );
+        assert_eq!(
+            call(
+                &json!({"entity":"light.a", "command":"off", "domain":"light", "service":"turn_off"})
+            ),
+            "/api/services/light/turn_off"
+        );
+        assert_eq!(
+            call(
+                &json!({"group":"g1", "command":"on", "domain":"homeassistant", "service":"turn_on"})
+            ),
+            "/api/services/homeassistant/turn_on"
+        );
+        assert_eq!(call(&tg), "/api/services/homeassistant/turn_off");
+        let bad = json!({"entity":"light.a", "command":"off", "domain":"li ght", "service":"x"});
+        let pl = plan(Job::Toggle, &bad, &groups, &seen).unwrap();
+        assert_eq!(
+            service_call(Job::Toggle, &bad, &pl),
+            Err("Service invalide")
         );
     }
     #[test]

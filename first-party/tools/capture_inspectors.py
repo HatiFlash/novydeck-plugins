@@ -26,25 +26,34 @@ window.WebSocket = PreviewWebSocket;
 for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else ('clock', 'counter', 'oledsaver', 'rtssosd', 'homeassistant', 'googleassistant', 'googlehome', 'wallpaperengine')):
     html = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.html').read_text(encoding='utf-8')
     css = (ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'inspector.css').read_text(encoding='utf-8')
-    actions = ('wallpaper', 'playlist', 'next', 'profile', 'pause', 'stopplay') if name == 'wallpaperengine' else (None,)
+    actions = (('wallpaper', 'playlist', 'next', 'profile', 'pause', 'stopplay') if name == 'wallpaperengine'
+               else ('toggle', 'service', 'state') if name == 'homeassistant' else (None,))
+    # Scripts shipped next to the inspector (Home Assistant presets.js) must be inlined: the
+    # temporary page lives in inspector-previews/, not in the plugin folder.
+    presets = ROOT / 'plugins' / f'com.novydeck.{name}.sdPlugin' / 'presets.js'
+    if presets.is_file():
+        html = html.replace('<script src="presets.js"></script>', f'<script>{presets.read_text(encoding="utf-8")}</script>')
     for language in ('en', 'fr'):
         for action in actions:
             # Self-contained page: packaged CSS and genuine inspector initialization.
             page = html.replace('<link rel="stylesheet" href="inspector.css">', f'<style>{css}</style>')
-            if name in ('wallpaperengine', 'googlehome', 'oledsaver', 'rtssosd'):
+            if name in ('wallpaperengine', 'googlehome', 'oledsaver', 'rtssosd', 'homeassistant'):
                 info = json.dumps(json.dumps({'application': {'language': language}}))
                 action_info = json.dumps(json.dumps({
                     'context': 'preview',
                     'action': (f'com.novydeck.wallpaperengine.{action}' if name == 'wallpaperengine'
                                else 'com.novydeck.oledsaver.saver' if name == 'oledsaver'
                                else 'com.novydeck.rtssosd.osd' if name == 'rtssosd'
+                               else f'com.novydeck.homeassistant.{action}' if name == 'homeassistant'
                                else 'com.novydeck.googlehome.control'),
                     'payload': {'settings': ({'scope': 'group', 'home': 'sample-home',
                                              'targets': ['sample-lamp', 'sample-fan'], 'mode': 'toggle'}
                                             if name == 'googlehome' else
                                             {'mode': 'on', 'monitors': [{'name': r'\\.\DISPLAY2', 'index': 1,
                                              'x': 2560, 'y': 0, 'w': 1920, 'h': 1080}]}
-                                            if name == 'oledsaver' else {})}}))
+                                            if name == 'oledsaver' else
+                                            {'entity': 'light.neon', 'refresh': 10}
+                                            if name == 'homeassistant' else {})}}))
                 init = (FAKE_SOCKET + '\nconnectElgatoStreamDeckSocket('
                         f"0, 'preview', 'registerPropertyInspector', {info}, {action_info});")
                 if name == 'googlehome':
@@ -56,6 +65,20 @@ for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else (
                                                 {'id': 'sample-fan', 'name': 'Fan / Ventilateur'}]}]}}
                     init += ("\nsetTimeout(() => ws.onmessage?.({data: JSON.stringify("
                              + json.dumps(fixture) + ")}), 20);")
+                if name == 'homeassistant':
+                    # Offline fake connection: the Toggle action must show its "Action" menu
+                    # (no Domain/Service/JSON fields) for light.neon.
+                    ha_context = {'context': 'preview', 'event': 'sendToPropertyInspector'}
+                    for payload in (
+                        {'type': 'status', 'connected': True, 'hasToken': True, 'code': 'connected',
+                         'url': 'http://homeassistant.local:8123'},
+                        {'type': 'list', 'status': 'ok', 'entities': [
+                            {'id': 'light.neon', 'name': 'Neon / Néon', 'domain': 'light', 'state': 'on', 'unit': ''},
+                            {'id': 'switch.plug', 'name': 'Plug / Prise', 'domain': 'switch', 'state': 'off', 'unit': ''}]},
+                        {'type': 'groups', 'groups': []},
+                    ):
+                        init += ("\nsetTimeout(() => ws.onmessage?.({data: JSON.stringify("
+                                 + json.dumps({**ha_context, 'payload': payload}) + ")}), 20);")
                 if name == 'oledsaver':
                     fixture = {'context': 'preview', 'event': 'sendToPropertyInspector', 'payload': {'monitors': [
                         {'index': 0, 'name': r'\\.\DISPLAY1', 'width': 2560, 'height': 1440, 'x': 0, 'y': 0, 'primary': True},
@@ -73,7 +96,7 @@ for name in (('googlehome',) if os.environ.get('GOOGLEHOME_CAPTURE_ONLY') else (
             screenshot = output / f'{suffix}.png'
             try:
                 subprocess.run([str(edge), '--headless=new', '--disable-gpu', '--hide-scrollbars',
-                                '--no-first-run', f'--window-size=520,{1400 if name == "googlehome" else 1000}', f'--screenshot={screenshot}',
+                                '--no-first-run', f'--window-size=520,{1400 if name == "googlehome" else 2000 if name == "homeassistant" else 1000}', f'--screenshot={screenshot}',
                                 target.as_uri()], check=True, timeout=45)
                 if not screenshot.is_file():
                     raise RuntimeError(f'Missing screenshot: {screenshot}')

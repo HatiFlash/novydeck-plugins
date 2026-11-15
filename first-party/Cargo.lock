@@ -1103,7 +1103,7 @@ dependencies = [
 
 [[package]]
 name = "novydeck-homeassistant"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "novydeck-sdk",
  "reqwest",

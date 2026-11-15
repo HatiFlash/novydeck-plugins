@@ -133,3 +133,43 @@ test('groupes : actions génériques homeassistant et aller-retour', () => {
   // les préréglages d'une entité ne changent pas
   assert.equal(P.build(P.byId('light', 'toggle')).domain, 'light');
 });
+
+test('Basculer une entité : « Basculer » d\'abord, jamais de Personnalisé, domaine inconnu → homeassistant.toggle', () => {
+  const ids = (dom) => P.toggleChoices(dom).map((p) => p.id);
+  assert.deepEqual(ids('light'), ['toggle', 'on', 'off', 'brightness', 'color_temp']);
+  assert.deepEqual(ids(P.GROUP), ['toggle', 'on', 'off']);
+  assert.deepEqual(ids('switch'), ['toggle', 'on', 'off']);
+  // domaine sans toggle natif : premier préréglage pertinent, pas de toggle inventé
+  assert.equal(ids('cover')[0], 'open');
+  assert.ok(!ids('cover').includes('toggle'));
+  assert.equal(ids('media_player')[0], 'playpause');
+  // domaine inconnu ou vide : un seul choix, Basculer via homeassistant.toggle
+  for (const dom of ['sensor', '', 'foo']) {
+    const l = P.toggleChoices(dom);
+    assert.equal(l.length, 1);
+    const out = P.build(l[0]);
+    assert.deepEqual([l[0].id, out.domain, out.service, out.data], ['toggle', 'homeassistant', 'toggle', '']);
+  }
+  assert.ok(!P.toggleChoices('light').some((p) => p.id === P.CUSTOM));
+  // la table elle-même n'est pas réordonnée (le menu « Appeler un service » reste inchangé)
+  assert.deepEqual(P.forDomain('light').map((p) => p.id).slice(0, 3), ['on', 'off', 'toggle']);
+  // paramètre numérique conservé (%)
+  const b = P.toggleChoices('light').find((p) => p.id === 'brightness');
+  assert.equal(P.build(b, 40).data, '{"brightness_pct":40}');
+});
+
+test('quelles cartes et quels champs pour quelle action', () => {
+  const A = P.ACTIONS;
+  const tog = P.layout(A.toggle);
+  assert.deepEqual([tog.kind, tog.autoCard, tog.serviceCard, tog.presets, tog.custom, tog.help, tog.refresh, tog.title],
+    ['toggle', false, true, true, false, false, true, 'toggleTitle']);
+  const state = P.layout(A.state);
+  assert.deepEqual([state.kind, state.serviceCard, state.presets, state.custom, state.help, state.refresh, state.title],
+    ['state', true, false, false, false, true, 'stateTitle']);
+  const svc = P.layout(A.service);
+  assert.deepEqual([svc.kind, svc.presets, svc.custom, svc.help, svc.title], ['service', true, true, true, 'serviceTitle']);
+  const auto = P.layout(A.auto);
+  assert.deepEqual([auto.autoCard, auto.serviceCard, auto.target, auto.presets, auto.refresh], [true, false, false, false, false]);
+  // action absente ou inconnue : comme avant 1.2.1 (carte service complète)
+  for (const a of ['', undefined, 'x']) assert.equal(P.layout(a).kind, 'service');
+});
