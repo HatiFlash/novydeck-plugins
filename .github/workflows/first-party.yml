@@ -25,6 +25,7 @@ jobs:
       - run: python -m pip install pillow
       - run: cargo build --release --locked
       - run: cargo test --locked
+      - run: node --test homeassistant/tests
       - name: Sample runner metrics for real system-monitor previews
         shell: pwsh
         run: |

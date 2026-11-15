@@ -79,6 +79,34 @@ fn service_body(settings: &Value) -> Result<Value, &'static str> {
     obj.insert("entity_id".into(), json!(id));
     Ok(body)
 }
+/// Indices pour les actions prédéfinies de l'inspecteur (1.2.0) : options d'une liste, modes
+/// de climatisation, bornes d'un nombre. Valeurs bornées et filtrées ; rien d'autre n'est relayé.
+fn preset_hints(domain: &str, e: &Entity) -> Vec<(&'static str, Value)> {
+    let texts = |key: &str| -> Option<Value> {
+        let list: Vec<Value> = e.attributes[key]
+            .as_array()?
+            .iter()
+            .filter_map(Value::as_str)
+            .filter(|s| !s.is_empty() && s.chars().count() <= 128)
+            .take(100)
+            .map(|s| json!(s))
+            .collect();
+        (!list.is_empty()).then(|| Value::Array(list))
+    };
+    let number = |key: &str| e.attributes[key].as_f64().filter(|n| n.is_finite()).map(|n| json!(n));
+    let mut out = Vec::new();
+    match domain {
+        "select" | "input_select" => out.extend(texts("options").map(|v| ("options", v))),
+        "climate" => out.extend(texts("hvac_modes").map(|v| ("hvac_modes", v))),
+        "number" | "input_number" => {
+            out.extend(number("min").map(|v| ("min", v)));
+            out.extend(number("max").map(|v| ("max", v)));
+            out.extend(number("step").map(|v| ("step", v)));
+        }
+        _ => {}
+    }
+    out
+}
 fn state_label(e: &Entity) -> String {
     let unit = e.unit();
     format!(
@@ -446,7 +474,11 @@ impl Home {
             .map(|(id, e)| {
                 let name = e.friendly_name().filter(|n| !n.is_empty()).unwrap_or(&id).to_owned();
                 let domain = id.split('.').next().unwrap_or("").to_owned();
-                json!({"id":id, "name":name, "domain":domain, "state":e.state.chars().take(64).collect::<String>(), "unit":e.unit()})
+                let mut item = json!({"id":id, "name":name, "domain":domain, "state":e.state.chars().take(64).collect::<String>(), "unit":e.unit()});
+                for (k, v) in preset_hints(&domain, &e) {
+                    item[k] = v;
+                }
+                item
             })
             .collect();
         json!({"op":"list", "type":"list", "status":"ok", "code":"ok", "message":"", "entities":entities})
@@ -780,6 +812,33 @@ mod tests {
         );
         assert!(service_body(&json!({"entity":"../admin", "data":"{}"})).is_err());
         assert!(service_body(&json!({"entity":"light.salon", "data":"[]"})).is_err());
+    }
+    #[test]
+    fn preset_hints_expose_only_bounded_options_and_bounds() {
+        let sel = Entity {
+            state: "a".into(),
+            attributes: json!({"options":["a","", "b", 3], "secret":"x"}),
+        };
+        assert_eq!(
+            preset_hints("input_select", &sel),
+            vec![("options", json!(["a", "b"]))]
+        );
+        assert!(preset_hints("light", &sel).is_empty());
+        let num = Entity {
+            state: "5".into(),
+            attributes: json!({"min":0, "max":40.5, "step":0.5}),
+        };
+        assert_eq!(preset_hints("input_number", &num).len(), 3);
+        let clim = Entity {
+            state: "heat".into(),
+            attributes: json!({"hvac_modes":["off","heat"]}),
+        };
+        assert_eq!(preset_hints("climate", &clim), vec![("hvac_modes", json!(["off", "heat"]))]);
+        let many = Entity {
+            state: "a".into(),
+            attributes: json!({"options": (0..300).map(|i| format!("o{i}")).collect::<Vec<_>>()}),
+        };
+        assert_eq!(preset_hints("select", &many)[0].1.as_array().unwrap().len(), 100);
     }
     #[test]
     fn label_and_settings_never_carry_a_token() {
