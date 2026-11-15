@@ -7,6 +7,7 @@
 - Entities without presets (sensor, …) or no entity selected: custom mode directly / Entité sans préréglage ou aucune entité : mode personnalisé directement.
 - The entity list now carries select options, climate modes and number bounds (bounded, read-only) / La liste d'entités transmet options de liste, modes du thermostat et bornes de nombre.
 - Preset table in `presets.js` with node tests (`node --test first-party/homeassistant/tests`) / table des préréglages dans `presets.js`, testée par node.
+- Groups / Groupes : tick several entities, create / rename / edit / delete a named group, and choose "A saved group" as the target of Toggle and Call service keys (Cible : entité ou groupe). Groups are stored once for the plugin in `groups.json` next to `config.json` (shared by all keys, independent from the connection) / enregistrés une fois pour le plugin dans `groups.json`, partagés par toutes les touches. 1–50 entities, 50 groups max. Group actions: turn all on, turn all off, toggle (any on → all off, otherwise all on) via `homeassistant.*`, so mixed domains (light + switch) work in one call; the key shows on/off (on if at least one is on) / Tout allumer, tout éteindre, basculer (au moins une allumée → tout éteindre, sinon tout allumer) ; la touche affiche on/off. Single-entity keys are unchanged.
 - Not done: completing the list with every other service of the domain (would need a new REST call to `/api/services`) / Non fait : compléter avec tous les autres services du domaine (nécessiterait un nouvel appel REST `/api/services`).
 
 ## 1.1.1

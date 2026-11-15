@@ -311,10 +311,139 @@ pub fn store_config(config: &Config) -> Result<(), &'static str> {
     )
 }
 
+// ------------------------------------------------------------ groupes d'entités (1.2.0)
+
+pub const MAX_GROUPS: usize = 50;
+pub const MAX_MEMBERS: usize = 50;
+
+/// Groupe d'entités enregistré une fois pour tout le plugin (`groups.json`, à côté de
+/// `config.json`) et réutilisable par plusieurs touches. Fichier séparé : la connexion et
+/// l'invalidation du jeton ne peuvent jamais effacer les groupes, et inversement.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Group {
+    pub id: String,
+    pub name: String,
+    pub entities: Vec<String>,
+}
+fn valid_group_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 40
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_' || b == b'-')
+}
+impl Group {
+    /// Valide et normalise (nom rogné, doublons retirés en gardant l'ordre).
+    pub fn new(id: &str, name: &str, entities: &[String]) -> Result<Self, &'static str> {
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > 40 || name.chars().any(char::is_control) {
+            return Err("Nom de groupe invalide (1 à 40 caractères)");
+        }
+        if !valid_group_id(id) {
+            return Err("Identifiant de groupe invalide");
+        }
+        let mut seen = std::collections::HashSet::new();
+        let mut list = Vec::new();
+        for e in entities {
+            if !crate::rule::valid_entity_id(e) {
+                return Err("Entité invalide dans le groupe");
+            }
+            if seen.insert(e.as_str()) {
+                list.push(e.clone());
+            }
+        }
+        if list.is_empty() || list.len() > MAX_MEMBERS {
+            return Err("Un groupe contient de 1 à 50 entités");
+        }
+        Ok(Self {
+            id: id.to_owned(),
+            name: name.to_owned(),
+            entities: list,
+        })
+    }
+    pub fn from_value(v: &Value) -> Result<Self, &'static str> {
+        let list: Vec<String> = v["entities"]
+            .as_array()
+            .ok_or("Entités du groupe manquantes")?
+            .iter()
+            .map(|e| {
+                e.as_str()
+                    .map(str::to_owned)
+                    .ok_or("Entité invalide dans le groupe")
+            })
+            .collect::<Result<_, _>>()?;
+        Self::new(
+            v["id"].as_str().unwrap_or(""),
+            v["name"].as_str().unwrap_or(""),
+            &list,
+        )
+    }
+    pub fn to_value(&self) -> Value {
+        json!({"id": self.id, "name": self.name, "entities": self.entities})
+    }
+}
+/// Fichier absent, illisible ou entrée invalide : les entrées valides sont conservées.
+pub fn groups_from_bytes(bytes: &[u8]) -> Vec<Group> {
+    let Ok(v) = serde_json::from_slice::<Value>(bytes) else {
+        return Vec::new();
+    };
+    let mut out: Vec<Group> = Vec::new();
+    for item in v["groups"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .take(MAX_GROUPS)
+    {
+        if let Ok(g) = Group::from_value(item) {
+            if !out.iter().any(|o| o.id == g.id) {
+                out.push(g);
+            }
+        }
+    }
+    out
+}
+pub fn load_groups() -> Vec<Group> {
+    data_dir()
+        .ok()
+        .and_then(|d| fs::read(d.join("groups.json")).ok())
+        .map(|b| groups_from_bytes(&b))
+        .unwrap_or_default()
+}
+pub fn store_groups(groups: &[Group]) -> Result<(), &'static str> {
+    let list: Vec<Value> = groups.iter().map(Group::to_value).collect();
+    write_atomic(
+        "groups.json",
+        json!({"groups": list}).to_string().as_bytes(),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[test]
+    fn group_validation_and_persistence_format() {
+        let ids = |l: &[&str]| l.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let g = Group::new("g1", "  Salon  ", &ids(&["light.a", "switch.b", "light.a"])).unwrap();
+        assert_eq!(g.name, "Salon");
+        assert_eq!(g.entities, ids(&["light.a", "switch.b"]));
+        assert!(Group::new("g1", "", &ids(&["light.a"])).is_err());
+        assert!(Group::new("g1", &"x".repeat(41), &ids(&["light.a"])).is_err());
+        assert!(Group::new("G 1", "n", &ids(&["light.a"])).is_err());
+        assert!(Group::new("g1", "n", &[]).is_err());
+        assert!(Group::new("g1", "n", &ids(&["nodot"])).is_err());
+        assert!(Group::new("g1", "n", &ids(&["light.a/../b"])).is_err());
+        let many: Vec<String> = (0..51).map(|i| format!("light.l{i}")).collect();
+        assert!(Group::new("g1", "n", &many).is_err());
+        assert_eq!(
+            Group::new("g1", "n", &many[..50]).unwrap().entities.len(),
+            50
+        );
+        let file = json!({"groups":[g.to_value(), {"id":"bad id","name":"x","entities":["light.a"]}, g.to_value()]});
+        let back = groups_from_bytes(file.to_string().as_bytes());
+        assert_eq!(back, vec![g]);
+        assert!(groups_from_bytes(b"not json").is_empty());
+    }
     #[test]
     fn local_hosts() {
         for h in [

@@ -18,8 +18,9 @@ use std::{
     time::{Duration, Instant},
 };
 use store::{
-    is_cleartext, load_config, origin_of, plan_secret, store_config, test_credentials,
-    url_is_local, Config, DpapiVault, Secret, SecretPlan, Vault, INSECURE_REFUSED, MISMATCH,
+    is_cleartext, load_config, load_groups, origin_of, plan_secret, store_config, store_groups,
+    test_credentials, url_is_local, Config, DpapiVault, Group, Secret, SecretPlan, Vault,
+    INSECURE_REFUSED, MAX_GROUPS, MAX_MEMBERS, MISMATCH,
 };
 
 const TOGGLE: &str = "com.novydeck.homeassistant.toggle";
@@ -58,15 +59,31 @@ fn endpoint(base: &str, path: &str) -> Result<Url, &'static str> {
 fn safe_settings(settings: &Value) -> Value {
     let text = |k: &str| settings[k].as_str().unwrap_or("").to_owned();
     json!({"url": text("url"), "entity": text("entity"), "domain": text("domain"), "service": text("service"),
-        "data": text("data"), "refresh": settings["refresh"].as_u64().unwrap_or(10).clamp(2, 300),
+        "data": text("data"), "group": text("group"), "refresh": settings["refresh"].as_u64().unwrap_or(10).clamp(2, 300),
         "insecure": settings["insecure"].as_bool().unwrap_or(false),
         "attribute": text("attribute"), "op": text("op"), "value": text("value"),
         "hold_seconds": settings["hold_seconds"].clone(), "fire_at_start": settings["fire_at_start"].as_bool().unwrap_or(false)})
 }
+#[cfg(test)]
 fn service_body(settings: &Value) -> Result<Value, &'static str> {
     let id = settings["entity"].as_str().unwrap_or("");
-    if !entity(id) {
-        return Err("Entité invalide");
+    service_body_for(settings, &[id.to_owned()])
+}
+/// Corps d'appel pour une ou plusieurs entités (groupe). Chaque identifiant est validé ;
+/// une seule entité reste une chaîne (comportement inchangé des touches existantes), plusieurs
+/// donnent un tableau que Home Assistant accepte tel quel.
+fn service_body_for(settings: &Value, ids: &[String]) -> Result<Value, &'static str> {
+    if ids.is_empty() || ids.len() > MAX_MEMBERS {
+        return Err("Groupe invalide");
+    }
+    let mut unique: Vec<&str> = Vec::new();
+    for id in ids {
+        if !entity(id) {
+            return Err("Entité invalide");
+        }
+        if !unique.contains(&id.as_str()) {
+            unique.push(id);
+        }
     }
     let text = settings["data"].as_str().unwrap_or("").trim();
     let mut body: Value = if text.is_empty() {
@@ -75,9 +92,100 @@ fn service_body(settings: &Value) -> Result<Value, &'static str> {
         serde_json::from_str(text).map_err(|_| "JSON invalide")?
     };
     let obj = body.as_object_mut().ok_or("JSON objet requis")?;
-    // L'entité choisie dans l'inspecteur prime toujours sur les données avancées.
-    obj.insert("entity_id".into(), json!(id));
+    // La cible choisie dans l'inspecteur prime toujours sur les données avancées.
+    obj.insert(
+        "entity_id".into(),
+        if unique.len() == 1 {
+            json!(unique[0])
+        } else {
+            json!(unique)
+        },
+    );
     Ok(body)
+}
+/// Cibles d'une touche : le groupe enregistré s'il est choisi, sinon l'entité unique.
+fn resolve_targets(settings: &Value, groups: &[Group]) -> Result<Vec<String>, &'static str> {
+    let group = settings["group"].as_str().unwrap_or("");
+    if !group.is_empty() {
+        return groups
+            .iter()
+            .find(|g| g.id == group)
+            .map(|g| g.entities.clone())
+            .ok_or("Groupe introuvable");
+    }
+    let id = settings["entity"].as_str().unwrap_or("");
+    if entity(id) {
+        Ok(vec![id.to_owned()])
+    } else {
+        Err("Entité invalide")
+    }
+}
+type Lookup = Option<Option<Entity>>;
+#[derive(Debug, PartialEq)]
+enum GroupState {
+    /// Home Assistant non connecté : aucun état fiable.
+    Offline,
+    /// Connecté mais aucune entité du groupe n'existe.
+    Missing,
+    On,
+    Off,
+}
+/// Sémantique de groupe : au moins une entité allumée (`on`) → le groupe est « on ».
+fn group_state(states: &[Lookup]) -> GroupState {
+    if states.is_empty() || states.iter().any(Option::is_none) {
+        return GroupState::Offline;
+    }
+    if states.iter().flatten().all(Option::is_none) {
+        return GroupState::Missing;
+    }
+    if states.iter().flatten().flatten().any(|e| e.state == "on") {
+        GroupState::On
+    } else {
+        GroupState::Off
+    }
+}
+/// Basculer un groupe : au moins une allumée → tout éteindre, sinon tout allumer.
+fn group_toggle_service(states: &[Lookup]) -> Result<&'static str, &'static str> {
+    match group_state(states) {
+        GroupState::Offline => Err("États indisponibles"),
+        GroupState::Missing => Err("Entités introuvables"),
+        GroupState::On => Ok("turn_off"),
+        GroupState::Off => Ok("turn_on"),
+    }
+}
+/// Ce que la touche doit envoyer : cibles et, pour une bascule de groupe, le service décidé
+/// d'après les états actuels (domaine `homeassistant` : fonctionne pour des domaines mélangés).
+#[derive(Debug, PartialEq)]
+struct Plan {
+    ids: Vec<String>,
+    domain_service: Option<(&'static str, &'static str)>,
+}
+fn plan(
+    job: Job,
+    settings: &Value,
+    groups: &[Group],
+    lookup: &dyn Fn(&str) -> Lookup,
+) -> Result<Plan, &'static str> {
+    let ids = resolve_targets(settings, groups)?;
+    let is_group = !settings["group"].as_str().unwrap_or("").is_empty();
+    let toggle = match job {
+        Job::Toggle => true,
+        Job::Service => {
+            settings["domain"].as_str() == Some("homeassistant")
+                && settings["service"].as_str() == Some("toggle")
+        }
+        Job::Test => false,
+    };
+    let domain_service = if is_group && toggle {
+        let states: Vec<Lookup> = ids.iter().map(|id| lookup(id)).collect();
+        Some(("homeassistant", group_toggle_service(&states)?))
+    } else {
+        None
+    };
+    Ok(Plan {
+        ids,
+        domain_service,
+    })
 }
 /// Indices pour les actions prédéfinies de l'inspecteur (1.2.0) : options d'une liste, modes
 /// de climatisation, bornes d'un nombre. Valeurs bornées et filtrées ; rien d'autre n'est relayé.
@@ -91,9 +199,14 @@ fn preset_hints(domain: &str, e: &Entity) -> Vec<(&'static str, Value)> {
             .take(100)
             .map(|s| json!(s))
             .collect();
-        (!list.is_empty()).then(|| Value::Array(list))
+        (!list.is_empty()).then_some(Value::Array(list))
     };
-    let number = |key: &str| e.attributes[key].as_f64().filter(|n| n.is_finite()).map(|n| json!(n));
+    let number = |key: &str| {
+        e.attributes[key]
+            .as_f64()
+            .filter(|n| n.is_finite())
+            .map(|n| json!(n))
+    };
     let mut out = Vec::new();
     match domain {
         "select" | "input_select" => out.extend(texts("options").map(|v| ("options", v))),
@@ -236,7 +349,7 @@ impl Auto {
 
 // ------------------------------------------------------------ plugin
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum Job {
     Test,
     Toggle,
@@ -264,6 +377,9 @@ struct Home {
     vault: Arc<dyn Vault>,
     /// Écriture de `config.json` (injectable : hors Windows les tests n'ont pas de dossier de données).
     persist: fn(&Config) -> Result<(), &'static str>,
+    /// Groupes d'entités partagés par toutes les touches (`groups.json`).
+    groups: Vec<Group>,
+    persist_groups: fn(&[Group]) -> Result<(), &'static str>,
     has_token: bool,
     /// Jeton présent mais lié à une autre adresse que la connexion courante.
     mismatch: bool,
@@ -286,6 +402,8 @@ impl Home {
             config,
             vault,
             persist: store_config,
+            groups: Vec::new(),
+            persist_groups: store_groups,
             has_token: false,
             mismatch: false,
             seen: HashMap::new(),
@@ -299,6 +417,7 @@ impl Home {
 impl Default for Home {
     fn default() -> Self {
         let mut home = Self::with(load_config(), Monitor::spawn(), Arc::new(DpapiVault));
+        home.groups = load_groups();
         home.reconfigure();
         home
     }
@@ -515,7 +634,86 @@ impl Home {
         }
         Ok(())
     }
+    fn groups_payload(&self, saved: Option<&str>, error: Option<&str>) -> Value {
+        let list: Vec<Value> = self.groups.iter().map(Group::to_value).collect();
+        let mut v = json!({"type":"groups", "groups":list});
+        if let Some(id) = saved {
+            v["saved"] = json!(id);
+        }
+        if let Some(e) = error {
+            v["error"] = json!(e);
+        }
+        v
+    }
+    /// Crée ou modifie un groupe (identifiant généré à la création). Retourne son identifiant.
+    fn save_group(&mut self, payload: &Value) -> Result<String, &'static str> {
+        let given = payload["id"].as_str().unwrap_or("");
+        let id = if given.is_empty() {
+            if self.groups.len() >= MAX_GROUPS {
+                return Err("Maximum 50 groupes");
+            }
+            let n = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0);
+            format!("g{n:x}")
+        } else {
+            given.to_owned()
+        };
+        let group = Group::from_value(&json!({
+            "id": id, "name": payload["name"], "entities": payload["entities"]
+        }))?;
+        if self
+            .groups
+            .iter()
+            .any(|g| g.id != group.id && g.name.to_lowercase() == group.name.to_lowercase())
+        {
+            return Err("Nom de groupe déjà utilisé");
+        }
+        let mut next = self.groups.clone();
+        match next.iter_mut().find(|g| g.id == group.id) {
+            Some(slot) => *slot = group.clone(),
+            None if !given.is_empty() => return Err("Groupe introuvable"),
+            None => next.push(group.clone()),
+        }
+        (self.persist_groups)(&next)?;
+        self.groups = next;
+        Ok(group.id)
+    }
+    fn delete_group(&mut self, id: &str) -> Result<(), &'static str> {
+        if !self.groups.iter().any(|g| g.id == id) {
+            return Err("Groupe introuvable");
+        }
+        let next: Vec<Group> = self.groups.iter().filter(|g| g.id != id).cloned().collect();
+        (self.persist_groups)(&next)?;
+        self.groups = next;
+        Ok(())
+    }
+    fn group_label(&self, group: &str) -> String {
+        let Some(g) = self.groups.iter().find(|g| g.id == group) else {
+            return "Groupe introuvable".into();
+        };
+        let states: Vec<Lookup> = g
+            .entities
+            .iter()
+            .map(|id| self.monitor.lookup(id))
+            .collect();
+        match group_state(&states) {
+            GroupState::On => "on".into(),
+            GroupState::Off => "off".into(),
+            GroupState::Missing => "Introuvable".into(),
+            GroupState::Offline => match self.monitor.status() {
+                Status::AuthFailed(_) => "Accès refusé".into(),
+                Status::Disabled => "Non configuré".into(),
+                _ => "Hors ligne".into(),
+            },
+        }
+    }
     fn live_label(&self, key: &Key) -> Option<String> {
+        let group = key.settings["group"].as_str().unwrap_or("");
+        if !group.is_empty() {
+            return Some(self.group_label(group));
+        }
         let id = key.settings["entity"].as_str().unwrap_or("");
         if !entity(id) {
             return None;
@@ -539,6 +737,7 @@ impl Home {
         }
         key.pending = true;
         let settings = key.settings.clone();
+        let prepared = plan(job, &settings, &self.groups, &|id| self.monitor.lookup(id));
         let (config, provided) = test.unwrap_or_else(|| (self.config.clone(), None));
         let vault = self.vault.clone();
         let sender = self.tx.clone();
@@ -566,19 +765,30 @@ impl Home {
                     }
                     Job::Toggle => {
                         let secret = stored.ok_or("Non connecté")?;
-                        let body = service_body(&settings)?;
-                        request(&config, &secret, "/api/services/homeassistant/toggle", body)
+                        let plan = prepared?;
+                        let body = service_body_for(&settings, &plan.ids)?;
+                        let path = match plan.domain_service {
+                            Some((d, svc)) => format!("/api/services/{d}/{svc}"),
+                            None => "/api/services/homeassistant/toggle".to_owned(),
+                        };
+                        request(&config, &secret, &path, body)
                             .map(|_| 0)
                             .map_err(str::to_owned)
                     }
                     Job::Service => {
                         let secret = stored.ok_or("Non connecté")?;
-                        let domain = settings["domain"].as_str().unwrap_or("");
-                        let service = settings["service"].as_str().unwrap_or("");
+                        let (mut domain, mut service) = (
+                            settings["domain"].as_str().unwrap_or(""),
+                            settings["service"].as_str().unwrap_or(""),
+                        );
                         if !identifier(domain) || !identifier(service) {
                             return Err("Service invalide".into());
                         }
-                        let body = service_body(&settings)?;
+                        let plan = prepared?;
+                        if let Some((d, svc)) = plan.domain_service {
+                            (domain, service) = (d, svc);
+                        }
+                        let body = service_body_for(&settings, &plan.ids)?;
                         request(
                             &config,
                             &secret,
@@ -659,6 +869,24 @@ impl Plugin for Home {
                         self.send_status(&ctx, sdk)?;
                     }
                     "status" => self.send_status(&ctx, sdk)?,
+                    "groups" => sdk.inspector(&ctx, self.groups_payload(None, None))?,
+                    "saveGroup" | "deleteGroup" => {
+                        let result = if op == "saveGroup" {
+                            self.save_group(&event.payload).map(Some)
+                        } else {
+                            self.delete_group(event.payload["id"].as_str().unwrap_or(""))
+                                .map(|_| None)
+                        };
+                        match result {
+                            Ok(saved) => {
+                                let payload = self.groups_payload(saved.as_deref(), None);
+                                for target in self.inspectors.clone() {
+                                    sdk.inspector(&target, payload.clone())?;
+                                }
+                            }
+                            Err(e) => sdk.inspector(&ctx, self.groups_payload(None, Some(e)))?,
+                        }
+                    }
                     "list" => sdk.inspector(&ctx, self.list_payload())?,
                     "test" => {
                         // Adresse saisie (même non enregistrée) : jeton enregistré seulement si son
@@ -747,7 +975,9 @@ impl Plugin for Home {
                         }
                     }
                 }
-            } else if key.action != SERVICE {
+            } else if key.action != SERVICE
+                || !key.settings["group"].as_str().unwrap_or("").is_empty()
+            {
                 if let Some(label) = self.live_label(key) {
                     if label != key.label {
                         if let Some(key) = self.keys.get_mut(&ctx) {
@@ -833,12 +1063,173 @@ mod tests {
             state: "heat".into(),
             attributes: json!({"hvac_modes":["off","heat"]}),
         };
-        assert_eq!(preset_hints("climate", &clim), vec![("hvac_modes", json!(["off", "heat"]))]);
+        assert_eq!(
+            preset_hints("climate", &clim),
+            vec![("hvac_modes", json!(["off", "heat"]))]
+        );
         let many = Entity {
             state: "a".into(),
             attributes: json!({"options": (0..300).map(|i| format!("o{i}")).collect::<Vec<_>>()}),
         };
-        assert_eq!(preset_hints("select", &many)[0].1.as_array().unwrap().len(), 100);
+        assert_eq!(
+            preset_hints("select", &many)[0].1.as_array().unwrap().len(),
+            100
+        );
+    }
+    fn st(state: &str) -> Lookup {
+        Some(Some(ent(state)))
+    }
+    fn grp(ids: &[&str]) -> Group {
+        Group::new(
+            "g1",
+            "Salon",
+            &ids.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+        )
+        .unwrap()
+    }
+    #[test]
+    fn single_entity_body_is_unchanged_and_group_body_is_an_array() {
+        let one =
+            service_body(&json!({"entity":"light.a", "data":"{\"brightness_pct\":40}"})).unwrap();
+        assert_eq!(one, json!({"brightness_pct":40, "entity_id":"light.a"}));
+        let ids = vec![
+            "light.a".to_string(),
+            "switch.b".to_string(),
+            "light.a".to_string(),
+        ];
+        let many = service_body_for(&json!({"data":""}), &ids).unwrap();
+        assert_eq!(many, json!({"entity_id":["light.a","switch.b"]}));
+        // l'entity_id des données avancées ne contourne jamais la cible
+        let forced = service_body_for(&json!({"data":"{\"entity_id\":\"lock.x\"}"}), &ids).unwrap();
+        assert_eq!(forced["entity_id"], json!(["light.a", "switch.b"]));
+        assert!(service_body_for(&json!({}), &["light.a".into(), "bad id".into()]).is_err());
+        assert!(service_body_for(&json!({}), &[]).is_err());
+        let big: Vec<String> = (0..51).map(|i| format!("light.l{i}")).collect();
+        assert!(service_body_for(&json!({}), &big).is_err());
+        assert!(service_body(&json!({"entity":"nope"})).is_err());
+    }
+    #[test]
+    fn group_state_semantics() {
+        assert_eq!(group_state(&[st("off"), st("on")]), GroupState::On);
+        assert_eq!(
+            group_state(&[st("off"), st("unavailable")]),
+            GroupState::Off
+        );
+        assert_eq!(group_state(&[st("off"), Some(None)]), GroupState::Off);
+        assert_eq!(group_state(&[Some(None), Some(None)]), GroupState::Missing);
+        assert_eq!(group_state(&[st("on"), None]), GroupState::Offline);
+        assert_eq!(group_state(&[]), GroupState::Offline);
+        assert_eq!(group_toggle_service(&[st("on"), st("off")]), Ok("turn_off"));
+        assert_eq!(group_toggle_service(&[st("on"), st("on")]), Ok("turn_off"));
+        assert_eq!(group_toggle_service(&[st("off"), st("off")]), Ok("turn_on"));
+        assert!(group_toggle_service(&[None]).is_err());
+    }
+    #[test]
+    fn plans_for_entity_and_group_keys() {
+        let groups = vec![grp(&["light.a", "switch.b"])];
+        let seen = |id: &str| if id == "light.a" { st("on") } else { st("off") };
+        // touche existante (entité seule) : aucune lecture d'état, bascule native
+        let single = plan(Job::Toggle, &json!({"entity":"light.a"}), &groups, &seen).unwrap();
+        assert_eq!(
+            single,
+            Plan {
+                ids: vec!["light.a".into()],
+                domain_service: None
+            }
+        );
+        // une entité invalide reste refusée, groupe vide de sens inconnu aussi
+        assert!(plan(Job::Toggle, &json!({"entity":"x"}), &groups, &seen).is_err());
+        assert_eq!(
+            plan(Job::Service, &json!({"group":"nope"}), &groups, &seen),
+            Err("Groupe introuvable")
+        );
+        // groupe mixte : au moins une allumée → tout éteindre via homeassistant
+        let g = json!({"group":"g1", "domain":"homeassistant", "service":"toggle"});
+        let p = plan(Job::Service, &g, &groups, &seen).unwrap();
+        assert_eq!(p.ids, vec!["light.a", "switch.b"]);
+        assert_eq!(p.domain_service, Some(("homeassistant", "turn_off")));
+        let all_off = |_: &str| st("off");
+        assert_eq!(
+            plan(Job::Toggle, &json!({"group":"g1"}), &groups, &all_off)
+                .unwrap()
+                .domain_service,
+            Some(("homeassistant", "turn_on"))
+        );
+        // allumer / éteindre : pas de lecture d'état (états non requis)
+        let offline = |_: &str| None;
+        let on = json!({"group":"g1", "domain":"homeassistant", "service":"turn_on"});
+        assert_eq!(
+            plan(Job::Service, &on, &groups, &offline)
+                .unwrap()
+                .domain_service,
+            None
+        );
+        // bascule sans connexion : refus, aucune écriture
+        assert_eq!(
+            plan(Job::Toggle, &json!({"group":"g1"}), &groups, &offline),
+            Err("États indisponibles")
+        );
+        // un service d'entité unique nommé toggle n'est pas réinterprété
+        let single_toggle =
+            json!({"entity":"light.a", "domain":"homeassistant", "service":"toggle"});
+        assert_eq!(
+            plan(Job::Service, &single_toggle, &groups, &offline)
+                .unwrap()
+                .domain_service,
+            None
+        );
+    }
+    #[test]
+    fn groups_are_created_edited_and_deleted_with_persistence() {
+        let (mut home, _) = home_with(cfg(""), None);
+        home.persist_groups = |_| Ok(());
+        let ids = json!(["light.a", "switch.b"]);
+        let id = home
+            .save_group(&json!({"name":"Salon", "entities":ids}))
+            .unwrap();
+        assert_eq!(home.groups.len(), 1);
+        assert_eq!(
+            home.save_group(&json!({"name":"salon", "entities":["light.c"]})),
+            Err("Nom de groupe déjà utilisé")
+        );
+        assert_eq!(
+            home.save_group(&json!({"id":"inconnu", "name":"X", "entities":["light.c"]})),
+            Err("Groupe introuvable")
+        );
+        assert!(home
+            .save_group(&json!({"name":"Vide", "entities":[]}))
+            .is_err());
+        home.save_group(&json!({"id":id, "name":"Salon 2", "entities":["light.c"]}))
+            .unwrap();
+        assert_eq!(home.groups[0].name, "Salon 2");
+        assert_eq!(home.groups[0].entities, vec!["light.c"]);
+        let payload = home.groups_payload(Some(&id), None);
+        assert_eq!(payload["groups"][0]["name"], "Salon 2");
+        assert_eq!(payload["saved"], json!(id));
+        // un échec d'écriture ne modifie pas l'état en mémoire
+        home.persist_groups = |_| Err("Stockage impossible");
+        assert!(home
+            .save_group(&json!({"name":"Autre", "entities":["light.d"]}))
+            .is_err());
+        assert!(home.delete_group(&id).is_err());
+        assert_eq!(home.groups.len(), 1);
+        home.persist_groups = |_| Ok(());
+        home.delete_group(&id).unwrap();
+        assert!(home.groups.is_empty());
+        assert_eq!(home.delete_group(&id), Err("Groupe introuvable"));
+        for i in 0..MAX_GROUPS {
+            home.save_group(&json!({"name":format!("G{i}"), "entities":["light.a"]}))
+                .unwrap();
+        }
+        assert_eq!(
+            home.save_group(&json!({"name":"Trop", "entities":["light.a"]})),
+            Err("Maximum 50 groupes")
+        );
+    }
+    #[test]
+    fn group_key_settings_keep_the_group_and_old_keys_have_none() {
+        assert_eq!(safe_settings(&json!({"group":"g1"}))["group"], "g1");
+        assert_eq!(safe_settings(&json!({"entity":"light.a"}))["group"], "");
     }
     #[test]
     fn label_and_settings_never_carry_a_token() {

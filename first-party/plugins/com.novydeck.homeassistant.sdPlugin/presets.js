@@ -68,7 +68,16 @@
     input_select: [{ id: 'option', service: 'select_option', label: L('Choose an option', 'Choisir une option'), param: { key: 'option', type: 'choice', optionsFrom: 'options', label: L('Option', 'Option') } }],
     select: [{ id: 'option', service: 'select_option', label: L('Choose an option', 'Choisir une option'), param: { key: 'option', type: 'choice', optionsFrom: 'options', label: L('Option', 'Option') } }],
   };
-  for (const dom of Object.keys(TABLE)) for (const p of TABLE[dom]) { p.domain = dom; p.svc = p.svc || null; }
+  // Cible = groupe d'entités (domaines éventuellement mélangés) : services génériques
+  // homeassistant.* ; « Basculer » est décidé par le plugin d'après l'état du groupe
+  // (au moins une allumée → tout éteindre, sinon tout allumer).
+  const GROUP = '__group';
+  TABLE[GROUP] = [
+    { id: 'on', domain: 'homeassistant', service: 'turn_on', label: L('Turn all on', 'Tout allumer') },
+    { id: 'off', domain: 'homeassistant', service: 'turn_off', label: L('Turn all off', 'Tout éteindre') },
+    { id: 'toggle', domain: 'homeassistant', service: 'toggle', label: L('Toggle (any on → all off, else all on)', 'Basculer (au moins une allumée → tout éteindre, sinon tout allumer)') },
+  ];
+  for (const dom of Object.keys(TABLE)) for (const p of TABLE[dom]) { p.domain = p.domain || dom; p.svc = p.svc || null; }
 
   const CUSTOM = '__custom';
   const domainOf = (entityId) => { const m = /^([a-z0-9_]+)\./.exec(String(entityId || '').trim()); return m ? m[1] : ''; };
@@ -141,7 +150,7 @@
     return null;
   }
 
-  const api = { TABLE, CUSTOM, domainOf, forDomain, byId, first, serviceDomain, isEmpty, label, validate, build, match };
+  const api = { TABLE, CUSTOM, GROUP, domainOf, forDomain, byId, first, serviceDomain, isEmpty, label, validate, build, match };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.HAPresets = api;
 })(typeof self !== 'undefined' ? self : this);

@@ -117,3 +117,19 @@ test('helpers : domaine d\'entité, vide, libellés', () => {
   assert.equal(P.label(P.byId('light', 'on'), 'fr'), 'Allumer');
   assert.equal(P.label(P.byId('light', 'on'), 'en'), 'Turn on');
 });
+
+test('groupes : actions génériques homeassistant et aller-retour', () => {
+  const g = P.forDomain(P.GROUP);
+  assert.deepEqual(g.map((p) => p.id), ['on', 'off', 'toggle']);
+  for (const p of g) {
+    const out = P.build(p);
+    assert.equal(out.domain, 'homeassistant');
+    assert.equal(out.data, '');
+    assert.equal(P.match(P.GROUP, out.domain, out.service, out.data).preset.id, p.id);
+  }
+  assert.equal(P.build(P.byId(P.GROUP, 'toggle')).service, 'toggle');
+  // un service de lumière enregistré n'est pas une action de groupe : reste personnalisé
+  assert.equal(P.match(P.GROUP, 'light', 'turn_on', ''), null);
+  // les préréglages d'une entité ne changent pas
+  assert.equal(P.build(P.byId('light', 'toggle')).domain, 'light');
+});
